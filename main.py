@@ -55,27 +55,29 @@ class ReportsListResponse(BaseModel):
 @app.post("/reports/add")
 async def add_report(report: ReportIn, session: bool = Depends(verify_authentication_approval)):
     reports = load_data("reports")
+    config = load_data("config")
+    
     user_id = session.get("user_id")
     current_day = datetime.now().strftime("%d-%m-%Y")
     
     user_reports = reports.get(user_id, {})
     if not user_reports:
-        user_reports = {"items": {}, "last_record_id": 0, "user_id": user_id}
+        user_reports = {"items": {}, "user_id": user_id}
     
     day_report = user_reports.get(current_day, {})
     if not day_report:
         day_report = {"records": [], "day": current_day, "validated": False, "validated_by": -1}
     
-    new_record_id = user_reports.get("last_record_id")+1
+    new_record_id = config.get("last_record_id")+1
     files = report.content.files
     files_info = []
     for f in files:
         files_info.append(save_file(f, new_record_id, "reports"))
 
-    report_content = {"text": report.dict().get("text"), "files": files_info}
+    report_content = {"text": report.content.text, "files": files_info}
     new_report = {"id": new_record_id, "title": report.title, "content": report_content, "user_id": user_id, "day": current_day, "time": datetime.now().strftime("%H:%M:%S")}
     day_report["records"].append(new_report)
-    user_reports["last_record_id"] = new_record_id
+    config["last_record_id"] = new_record_id
     user_reports["items"][current_day] = day_report
     reports[user_id] = user_reports
 
@@ -86,13 +88,15 @@ async def add_report(report: ReportIn, session: bool = Depends(verify_authentica
 @app.get("/reports", response_model=ReportsListResponse)
 def get_reports(session: bool = Depends(verify_authentication_approval)):
     reports = load_data("reports")
+    if is_admin(session.get("api_key")):
+        return {"ok": True, "reports": reports}
     user_id = session.get("user_id")
     return {"ok": True, "reports": {user_id: reports[f"{user_id}"]}}
 
-@app.get("/x-reports", response_model=ReportsListResponse)
-def get_reports(session: bool = Depends(verify_authentication_approval)):
+@app.patch("/reports/edit")
+def delete_report(id: int, session: bool = Depends(verify_authentication_approval)):
     reports = load_data("reports")
-    return {"ok": True, "reports": reports}
+    record_id = next
 
 # -------------------------------------------
 # CRUD Operations on Users
@@ -114,25 +118,25 @@ class UserIn(BaseModel):
 
 class UsersListResponse(BaseModel):
     ok: bool
-    users: List[User]
+    users: Dict[int, User]
     
 class UserProfileResponse(BaseModel):
     ok: bool
     user: User
 
 @app.post("/users/add")
-async def add_user(user_in: UserIn, session: bool = Depends(verify_admin)):
+async def add_user(user_in: UserIn, authorized: bool = Depends(only_admin)):
     users = load_data("users")
     config = load_data("config")
     config["last_user_id"] += 1
     new_user = {"id": config["last_user_id"]} | user_in.dict() | {"api_key": generate_api_key(), "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")} 
-    users.append(new_user)
+    users[new_user.get("id")] = new_user
     save_data(users, "users")
     save_data(config, "config")
     return {"ok": True, "message": "User added successfully", "user": new_user}
 
 @app.get("/users", response_model=UsersListResponse)
-def get_users():
+def get_users(authorized: bool = Depends(only_admin)):
     users = load_data("users")
     return {"ok": True, "users": users}
 

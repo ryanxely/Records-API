@@ -22,7 +22,7 @@ def save_data(data, object_category="reports"):
 async def save_file(f: UploadFile, object_id, object_category="reports"):
     name = f.filename
     ext = name.split(".")[-1]
-    path = f"files/{object_id}/{name}.{ext}"
+    path = f"files/{object_category}/{object_id}/{name}.{ext}"
     type = f.content_type
     
     with open(path, "wb") as out_file:
@@ -35,7 +35,7 @@ async def save_file(f: UploadFile, object_id, object_category="reports"):
     return {"id": config["last_file_id"], "name": name, "type": type, "path": path}
 
 def verify_api_key(x_api_key: str = Header(...)):
-    user = next((u for u in load_data("users") if u["api_key"] == x_api_key), {})
+    user = next((u for k, u in load_data("users").items() if u["api_key"] == x_api_key), {})
     if not user:
         raise HTTPException(status_code=401, detail="Invalid API Key")
     return user
@@ -54,11 +54,14 @@ def verify_authentication_approval(x_api_key: str = Header(...)):
         raise HTTPException(status_code=401, detail="Authentication not yet verified. Please verify your authentication code.")
     return session
 
-def verify_admin(x_api_key: str = Header(...)):
+def is_admin(x_api_key: str = Header(...)):
     session = verify_authentication_approval(x_api_key)
-    if session.get("user_id") != 0:
+    user = load_data("users")[session.get("user_id")]
+    return user.get("role") == "Administrator"
+
+def only_admin(x_api_key: str = Header(...)):
+    if not is_admin(x_api_key):
         raise HTTPException(status_code=401, detail="Vous n'etes pas autorisé à éffectuer cette opération")
-    return session
 
 def generate_api_key():
     return secrets.token_hex(24).upper()

@@ -1,5 +1,5 @@
-[
-    {
+{
+    "0": {
         "id": 0,
         "username": "admin",
         "role": "Administrator",
@@ -8,7 +8,7 @@
         "api_key": "88DE6A2D597F7CE8307B6EC1AA075ABC05006C3B7334322D",
         "created_at": "2025-11-20 08:23:28"
     },
-    {
+    "1": {
         "id": 1,
         "username": "ryan",
         "role": "User",
@@ -17,13 +17,13 @@
         "api_key": "98DE6A2D597F7CE8307B6FC1BA075ABC05026C3B7334322D",
         "created_at": "2025-11-24 13:57:20"
     },
-    {
+    "2": {
         "id": 2,
-        "username": "xeller",
+        "username": "ruben",
         "role": "User",
-        "phone": "237681803185",
-        "email": "ryanxely@outlook.com",
+        "phone": "237679845608",
+        "email": "yvesnyemb7@gmail.com",
         "api_key": "083B5E50DEA06F341185A4305BFDD0DF185E988A08D18479",
         "created_at": "2025-11-25 14:06:52"
     }
-]
+}
