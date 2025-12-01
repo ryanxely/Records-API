@@ -11,8 +11,8 @@ def load_data(object_category="reports"):
             try:
                 return json.load(f)
             except json.JSONDecodeError:
-                return []
-    return []
+                return {}
+    return {}
 
 def save_data(data, object_category="reports"):
     import json
@@ -33,6 +33,15 @@ async def save_file(f: UploadFile, path: str):
     save_data(config, "config")
     
     return {"id": config["last_file_id"], "name": name, "type": type, "path": path}
+
+async def delete_files(files, target_files):
+    new_list = []
+    for f in files:
+        if f.get("id") in target_files:
+            Path(f.get("path")).unlink()
+        else:
+            new_list.append(f)
+    return new_list
 
 def verify_api_key(x_api_key: str = Header(...)):
     user = next((u for k, u in load_data("users").items() if u["api_key"] == x_api_key), {})
@@ -56,7 +65,7 @@ def verify_authentication_approval(x_api_key: str = Header(...)):
 
 def is_admin(x_api_key: str = Header(...)):
     session = verify_authentication_approval(x_api_key)
-    user = load_data("users")[session.get("user_id")]
+    user = load_data("users")[str(session.get("user_id"))]
     return user.get("role") == "Administrator"
 
 def only_admin(x_api_key: str = Header(...)):

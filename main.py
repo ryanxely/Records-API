@@ -1,16 +1,101 @@
 from fastapi import FastAPI, Depends, File, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict
 from datetime import datetime
 from enum import Enum
+from flask_cors import CORS
+import requests
 
 from utilities import *
 
 app = FastAPI(title="Report API", version="1.0.0")
+origins = [
+    "https://srvgc.tailcca3c2.ts.net"
+]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.get("/")
 def root():
     return {"ok": True, "message": "Welcome to the Report API"}
+
+# -------------------------------------------
+# Login Operations
+# -------------------------------------------
+class LoginParamType(str, Enum):
+    username = "username"
+    phone = "phone"
+    email = "email"
+
+class Credentials(BaseModel):
+    login_param: LoginParamType
+    value: str
+
+class Session(BaseModel):
+    credentials: Credentials
+    user_id: int
+    code: str
+    approved: bool
+    start_time: str
+    api_key: str
+
+@app.post("/auth/login")
+async def login(credentials: Credentials):
+    credentials = credentials.dict()
+    p, v = tuple(credentials.values())
+    data = load_data("users")
+    user = next((u for k, u in data.items() if u.get(p) == v), {})
+    if not user:
+        raise HTTPException(status_code=401, detail="Utilisateur non existant")
+    sessions = load_data("sessions")
+    if sessions.get(user.get("api_key"), {}).get("approved"):
+        old_session_info = logout(sessions.get(user.get("api_key"))).get("session_info")
+        print("=============in login==================")
+        print(old_session_info)
+        result = await login(Credentials(**old_session_info.get("credentials")))
+        return {"ok": True, "api_key": result.get("api_key"), "message": "Your previous session has been reinitialised. Please grant us the new verification code we sent you"}
+    session = {"credentials": credentials, "user_id": user.get("id"), "code": generate_verification_code(), "approved": False, "start_time": "", "api_key": user.get("api_key")} 
+    sessions[user.get("api_key")] = session
+    save_data(sessions, "sessions")
+    # send_verification_code(user.get("email"), session.get("code"))
+    return {"ok": True, "api_key": user.get("api_key"), "message": "We sent you a verification code on the following email address: " + user.get("email")}
+
+
+@app.post("/auth/login/verify")
+async def verify_login(code: str, session: Session = Depends(verify_authentication)):
+    api_key = session.get("api_key")
+    sessions = load_data("sessions")
+    if sessions.get(api_key).get("approved"):
+        old_session_info = logout(sessions.get(api_key)).get("session_info")
+        print("=============in verify==================")
+        print(old_session_info)
+        result = await login(Credentials(**old_session_info.get("credentials")))
+        return {"ok": True, "api_key": result.get("api_key"), "message": "Your previous session has been reinitialised. Please grant us the new verification code we sent you"}
+    elif not sessions.get(api_key).get("code"):
+        raise HTTPException(status_code=401, detail="Code de verification expiré. Veuillez demander un nouveau code")
+    elif sessions.get(api_key).get("code") != code:
+        raise HTTPException(status_code=401, detail="Code de verification incorrect")
+    else:
+        sessions[api_key]["approved"] = True
+        sessions[api_key]["start_time"] = now()
+        save_data(sessions, "sessions")
+        return {"ok": True, "message": "Successfully Authenticated"}
+    
+@app.post("/auth/logout")
+def logout(session: Session = Depends(verify_authentication)):
+    sessions = load_data("sessions")
+    session_info = sessions.pop(session.get("api_key"))
+    save_data(sessions, "sessions")
+    users = load_data("users")
+    users[str(session_info.get("user_id"))]["api_key"] = generate_api_key()
+    save_data(users, "users")
+    return {"ok": True, "message": "Vous avez été déconnecté avec succès", "session_info": session_info}
 
 # -------------------------------------------
 # CRUD Operations on Reports
@@ -22,7 +107,7 @@ class FileOut(BaseModel):
     type: str # content_type
 
 class ReportContent(BaseModel):
-    text: Optional[str] = None
+    text: Optional[str] = ""
     files: Optional[List[UploadFile]] = []
 
 class Report(BaseModel):
@@ -41,7 +126,6 @@ class DayReport(BaseModel):
 
 class UserReports(BaseModel):
     items: Dict[str, DayReport]
-    last_record_id: int
     user_id: int
 
 class ReportIn(BaseModel):
@@ -49,27 +133,26 @@ class ReportIn(BaseModel):
     content: Optional[ReportContent] = None
 
 class ReportEdit(ReportIn):
-    files_to_delete: List[int]
+    id: int
+    title: Optional[str] = ""
+    content: Optional[ReportContent] = None
+    files_to_delete: Optional[List[int]] = []
 
 class ReportsListResponse(BaseModel):
     ok: bool
     reports: Dict[str, UserReports]
 
 @app.post("/reports/add")
-async def add_report(report: ReportIn, session: bool = Depends(verify_authentication_approval)):
+async def add_report(report: ReportIn, session: Session = Depends(verify_authentication_approval)):
     reports = load_data("reports")
     config = load_data("config")
     
     user_id = session.get("user_id")
     current_day = now("date")
     
-    user_reports = reports.get(str(user_id), {})
-    if not user_reports:
-        user_reports = {"items": {}, "user_id": user_id}
+    user_reports = reports.get(str(user_id), {"items": {}, "user_id": user_id})
     
-    day_report = user_reports.get(current_day, {})
-    if not day_report:
-        day_report = {"records": [], "day": current_day, "validated": False, "validated_by": -1}
+    day_report = user_reports.get(current_day, {"records": [], "day": current_day, "validated": False, "validated_by": -1})
     
     new_record_id = config.get("last_record_id")+1
     files = report.content.files
@@ -89,36 +172,60 @@ async def add_report(report: ReportIn, session: bool = Depends(verify_authentica
     save_data(config, "config")
     return {"ok": True, "message": "Report added successfully", "report": new_report}
 
-@app.get("/reports", response_model=ReportsListResponse)
-def get_reports(session: bool = Depends(verify_authentication_approval)):
+@app.get("/reports")
+def get_reports(session: Session = Depends(verify_authentication_approval)):
     reports = load_data("reports")
     if is_admin(session.get("api_key")):  
         return {"ok": True, "reports": reports}
     user_id = session.get("user_id")
-    return {"ok": True, "reports": {user_id: reports[f"{user_id}"]}}
+    return {"ok": True, "reports": reports.get(str(user_id), {})}
 
 @app.patch("/reports/edit")
-def delete_report(record_id: int, edited_report: ReportEdit, session: bool = Depends(verify_authentication_approval)):
-    day_records = load_data("reports").get(session.get("user_id"), {}).get(now("date"))
-    record_index = next((i for i,u in enumerate(day_records) if u.get("id") == record_id))
+async def delete_report(edited_report: ReportEdit, session: Session = Depends(verify_authentication_approval)):
+    user_id = session.get("user_id")
+    print("edited report", "\n", edited_report.dict())
+    reports = load_data("reports")
 
-    files_to_delete_set = set(edited_report.files_to_delete)
-    day_records[record_index]["content"]["files"] = [
-        f for f in day_records[record_index]["content"]["files"]
-        if f.get("id") not in files_to_delete_set
-    ]
-    # for id in 
+    user_reports = reports.get(str(user_id), {})
+    if not user_reports:
+        return {"ok": True, "message": "You have no reports"}
+    
+    day_report = user_reports.get("items").get(now("date"), {})
+    if not day_report:
+        return {"ok": True, "message": "You have no active reports"}
+    print("day_report", day_report)
+    
+    records = day_report.get("records")
+    record_index = next((i for i,u in enumerate(records) if u.get("id") == edited_report.id), -1)
+    if record_index == -1:
+        raise HTTPException(status_code=401, detail="Invalid report index !")
+
+    new_files_info = await delete_files(records[record_index]["content"]["files"], set(edited_report.files_to_delete))
 
     new_files = edited_report.content.files
     for f in new_files:
         ext = f.filename.split(".")[-1]
-        day_records[record_index]["content"]["files"].append(save_file(f, f"files/reports/{record_id}/{f.filename}.{ext}"))
+        new_files_info.append(await save_file(f, f"files/reports/{edited_report.id}/{f.filename}.{ext}"))
 
-    edited_report_dict = {"title": edited_report.title, "time": now("time"), "content": {"text": edited_report.content.text, "files": new_files_info}}
-    day_records[record_index].update(edited_report_dict)
-
-
-
+    edited_report_dict = {
+        "title": edited_report.title or records[record_index]["title"], 
+        "time": now("time"),
+        "content": {
+            "text": edited_report.content.text or records[record_index]["content"]["text"],
+            "files": new_files_info
+        }
+    }
+    day_report["records"][record_index]["title"] = edited_report.title or records[record_index]["title"]
+    day_report["records"][record_index]["time"] = now("time")
+    day_report["records"][record_index]["content"]["text"] = edited_report.content.text or records[record_index]["content"]["text"]
+    day_report["records"][record_index]["content"]["files"] = new_files_info
+    print("finally\n", day_report)
+    user_reports["items"][now("date")].update(day_report)
+    print("finally user reports", user_reports)
+    reports[str(user_id)].update(user_reports)
+    print("finally reports dict", reports)
+    
+    save_data(reports, "reports")
 
 
 # -------------------------------------------
@@ -153,7 +260,7 @@ async def add_user(user_in: UserIn, authorized: bool = Depends(only_admin)):
     config = load_data("config")
     config["last_user_id"] += 1
     new_user = {"id": config["last_user_id"]} | user_in.dict() | {"api_key": generate_api_key(), "created_at": now()} 
-    users[new_user.get("id")] = new_user
+    users[str(new_user.get("id"))] = new_user
     save_data(users, "users")
     save_data(config, "config")
     return {"ok": True, "message": "User added successfully", "user": new_user}
@@ -164,78 +271,11 @@ def get_users(authorized: bool = Depends(only_admin)):
     return {"ok": True, "users": users}
 
 @app.get("/profile", response_model=UserProfileResponse)
-def get_user_profile(session: bool = Depends(verify_authentication_approval)):
+def get_user_profile(session: Session = Depends(verify_authentication_approval)):
     users = load_data("users")
-    user_profile = users[session.get("user_id")]
+    user_profile = users.get(str(session.get("user_id")))
     return {"ok": True, "user": user_profile}
 
-# -------------------------------------------
-# Login Operations
-# -------------------------------------------
-class LoginParamType(str, Enum):
-    username = "username"
-    phone = "phone"
-    email = "email"
-
-class Credentials(BaseModel):
-    login_param: LoginParamType
-    value: str
-
-class Session(BaseModel):
-    credentials: Credentials
-    user_id: int
-    code: str
-    approved: bool
-    start_time: str
-    api_key: str
-
-@app.post("/auth/login")
-def login(credentials: Credentials):
-    credentials = credentials.dict()
-    k, v = tuple(credentials.values())
-    user = next((u for u in load_data("users") if u.get(k) == v), {})
-    if not user:
-        raise HTTPException(status_code=401, detail="Utilisateur non existant")
-    sessions = load_data("sessions")
-    if sessions.get(user.get("api_key")).get("approved"):
-        old_session_info = logout(user.get("api_key"))
-        result = login(old_session_info.get("credentials"))
-        return {"ok": True, "api_key": result.get("api_key"), "message": "Please grant us the new verification code we sent you"}
-    session = credentials | {"user_id": user.get("id"), "code": generate_verification_code(), "approved": False, "start_time": "", "api_key": user.get("api_key")} 
-    sessions[user.get("api_key")] = session
-    save_data(sessions, "sessions")
-    send_verification_code(user.get("email"), session.get("code"))
-    return {"ok": True, "api_key": user.get("api_key"), "message": "Waiting for verification code"}
-
-
-@app.post("/auth/login/verify")
-def verify_login(code: str, session: Session = Depends(verify_authentication)):
-    api_key = session.get("api_key")
-    sessions = load_data("sessions")
-    if sessions.get(api_key).get("approved"):
-        old_session_info = logout(api_key)
-        result = login(old_session_info.get("credentials"))
-        return {"ok": True, "api_key": result.get("api_key"), "message": "Please grant us the new verification code we sent you"}
-    elif not sessions.get(api_key).get("code"):
-        raise HTTPException(status_code=401, detail="Code de verification expiré. Veuillez demander un nouveau code")
-    elif sessions.get(api_key).get("code") != code:
-        raise HTTPException(status_code=401, detail="Code de verification incorrect")
-    else:
-        sessions[api_key]["approved"] = True
-        sessions[api_key]["start_time"] = now()
-        save_data(sessions, "sessions")
-        return {"ok": True, "message": "Successfully Authenticated"}
-    
-
-@app.post("/auth/logout")
-def logout(session: Session = Depends(verify_authentication)):
-    sessions = load_data("sessions")
-    session_info = sessions.pop(session.get("api_key"))
-    save_data(sessions, "sessions")
-    users = load_data("users")
-    users[session_info.get("user_id")]["api_key"] = generate_api_key()
-    save_data(users, "users")
-    return {"ok": True, "message": "Vous avez été déconnecté avec succès", "session_info": session_info}
 
 if __name__ == "__main__":
     import uvicorn
