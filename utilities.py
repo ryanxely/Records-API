@@ -1,3 +1,4 @@
+from datetime import datetime
 from pathlib import Path
 from fastapi import Header, HTTPException, UploadFile
 import secrets
@@ -19,10 +20,9 @@ def save_data(data, object_category="reports"):
     with open(data_file, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
 
-async def save_file(f: UploadFile, object_id, object_category="reports"):
+async def save_file(f: UploadFile, path: str):
     name = f.filename
-    ext = name.split(".")[-1]
-    path = f"files/{object_category}/{object_id}/{name}.{ext}"
+    # ext = name.split(".")[-1]
     type = f.content_type
     
     with open(path, "wb") as out_file:
@@ -69,6 +69,14 @@ def generate_api_key():
 def generate_verification_code():
     return str(int(secrets.token_hex(2), 16))
 
+def now(type: str = "datetime"):
+    # Default : datetime
+    format = "%d-%m-%Y %H:%M:%S"
+    if type == "date":
+        format = "%d-%m-%Y"
+    if type == "time":
+        format = "%H:%M:%S"
+    return datetime.now().strftime(format)
 # -------------------------------------------------
 # Automatic mails
 # -------------------------------------------------

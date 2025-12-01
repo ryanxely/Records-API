@@ -48,6 +48,9 @@ class ReportIn(BaseModel):
     title: str
     content: Optional[ReportContent] = None
 
+class ReportEdit(ReportIn):
+    files_to_delete: List[int]
+
 class ReportsListResponse(BaseModel):
     ok: bool
     reports: Dict[str, UserReports]
@@ -58,9 +61,9 @@ async def add_report(report: ReportIn, session: bool = Depends(verify_authentica
     config = load_data("config")
     
     user_id = session.get("user_id")
-    current_day = datetime.now().strftime("%d-%m-%Y")
+    current_day = now("date")
     
-    user_reports = reports.get(user_id, {})
+    user_reports = reports.get(str(user_id), {})
     if not user_reports:
         user_reports = {"items": {}, "user_id": user_id}
     
@@ -72,10 +75,11 @@ async def add_report(report: ReportIn, session: bool = Depends(verify_authentica
     files = report.content.files
     files_info = []
     for f in files:
-        files_info.append(save_file(f, new_record_id, "reports"))
+        ext = f.filename.split(".")[-1]
+        files_info.append(save_file(f, f"files/reports/{new_record_id}/{f.filename}.{ext}"))
 
     report_content = {"text": report.content.text, "files": files_info}
-    new_report = {"id": new_record_id, "title": report.title, "content": report_content, "user_id": user_id, "day": current_day, "time": datetime.now().strftime("%H:%M:%S")}
+    new_report = {"id": new_record_id, "title": report.title, "content": report_content, "user_id": user_id, "day": current_day, "time": now("time")}
     day_report["records"].append(new_report)
     config["last_record_id"] = new_record_id
     user_reports["items"][current_day] = day_report
@@ -88,15 +92,34 @@ async def add_report(report: ReportIn, session: bool = Depends(verify_authentica
 @app.get("/reports", response_model=ReportsListResponse)
 def get_reports(session: bool = Depends(verify_authentication_approval)):
     reports = load_data("reports")
-    if is_admin(session.get("api_key")):
+    if is_admin(session.get("api_key")):  
         return {"ok": True, "reports": reports}
     user_id = session.get("user_id")
     return {"ok": True, "reports": {user_id: reports[f"{user_id}"]}}
 
 @app.patch("/reports/edit")
-def delete_report(id: int, session: bool = Depends(verify_authentication_approval)):
-    reports = load_data("reports")
-    record_id = next
+def delete_report(record_id: int, edited_report: ReportEdit, session: bool = Depends(verify_authentication_approval)):
+    day_records = load_data("reports").get(session.get("user_id"), {}).get(now("date"))
+    record_index = next((i for i,u in enumerate(day_records) if u.get("id") == record_id))
+
+    files_to_delete_set = set(edited_report.files_to_delete)
+    day_records[record_index]["content"]["files"] = [
+        f for f in day_records[record_index]["content"]["files"]
+        if f.get("id") not in files_to_delete_set
+    ]
+    # for id in 
+
+    new_files = edited_report.content.files
+    for f in new_files:
+        ext = f.filename.split(".")[-1]
+        day_records[record_index]["content"]["files"].append(save_file(f, f"files/reports/{record_id}/{f.filename}.{ext}"))
+
+    edited_report_dict = {"title": edited_report.title, "time": now("time"), "content": {"text": edited_report.content.text, "files": new_files_info}}
+    day_records[record_index].update(edited_report_dict)
+
+
+
+
 
 # -------------------------------------------
 # CRUD Operations on Users
@@ -129,7 +152,7 @@ async def add_user(user_in: UserIn, authorized: bool = Depends(only_admin)):
     users = load_data("users")
     config = load_data("config")
     config["last_user_id"] += 1
-    new_user = {"id": config["last_user_id"]} | user_in.dict() | {"api_key": generate_api_key(), "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")} 
+    new_user = {"id": config["last_user_id"]} | user_in.dict() | {"api_key": generate_api_key(), "created_at": now()} 
     users[new_user.get("id")] = new_user
     save_data(users, "users")
     save_data(config, "config")
@@ -199,7 +222,7 @@ def verify_login(code: str, session: Session = Depends(verify_authentication)):
         raise HTTPException(status_code=401, detail="Code de verification incorrect")
     else:
         sessions[api_key]["approved"] = True
-        sessions[api_key]["start_time"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        sessions[api_key]["start_time"] = now()
         save_data(sessions, "sessions")
         return {"ok": True, "message": "Successfully Authenticated"}
     
