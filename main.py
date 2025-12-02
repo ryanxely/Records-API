@@ -1,17 +1,18 @@
 from fastapi import FastAPI, Depends, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
-from typing import List, Optional, Dict
-from datetime import datetime
-from enum import Enum
-from flask_cors import CORS
-import requests
+from fastapi.responses import FileResponse
+from typing import List
 
+from models import *
 from utilities import *
 
 app = FastAPI(title="Report API", version="1.0.0")
 origins = [
-    "https://srvgc.tailcca3c2.ts.net"
+    "https://srvgc.tailcca3c2.ts.net",
+    "http://127.0.0.1:5050",
+    "http://127.0.0.1",
+    "http://localhost:5050",
+    "http://localhost"
 ]
 app.add_middleware(
     CORSMiddleware,
@@ -28,29 +29,12 @@ def root():
 # -------------------------------------------
 # Login Operations
 # -------------------------------------------
-class LoginParamType(str, Enum):
-    username = "username"
-    phone = "phone"
-    email = "email"
-
-class Credentials(BaseModel):
-    login_param: LoginParamType
-    value: str
-
-class Session(BaseModel):
-    credentials: Credentials
-    user_id: int
-    code: str
-    approved: bool
-    start_time: str
-    api_key: str
-
 @app.post("/auth/login")
 async def login(credentials: Credentials):
     credentials = credentials.dict()
     p, v = tuple(credentials.values())
-    data = load_data("users")
-    user = next((u for k, u in data.items() if u.get(p) == v), {})
+    users = load_data("users")
+    user = next((u for k, u in users.items() if u.get(p) == v), {})
     if not user:
         raise HTTPException(status_code=401, detail="Utilisateur non existant")
     sessions = load_data("sessions")
@@ -63,12 +47,12 @@ async def login(credentials: Credentials):
     session = {"credentials": credentials, "user_id": user.get("id"), "code": generate_verification_code(), "approved": False, "start_time": "", "api_key": user.get("api_key")} 
     sessions[user.get("api_key")] = session
     save_data(sessions, "sessions")
-    # send_verification_code(user.get("email"), session.get("code"))
+    send_verification_code(user.get("email"), session.get("code"))
     return {"ok": True, "api_key": user.get("api_key"), "message": "We sent you a verification code on the following email address: " + user.get("email")}
 
 
 @app.post("/auth/login/verify")
-async def verify_login(code: str, session: Session = Depends(verify_authentication)):
+async def verify_login(code: str, session: dict = Depends(verify_authentication)):
     api_key = session.get("api_key")
     sessions = load_data("sessions")
     if sessions.get(api_key).get("approved"):
@@ -88,92 +72,100 @@ async def verify_login(code: str, session: Session = Depends(verify_authenticati
         return {"ok": True, "message": "Successfully Authenticated"}
     
 @app.post("/auth/logout")
-def logout(session: Session = Depends(verify_authentication)):
+def logout(session: dict = Depends(verify_authentication)):
     sessions = load_data("sessions")
     session_info = sessions.pop(session.get("api_key"))
     save_data(sessions, "sessions")
+
     users = load_data("users")
     users[str(session_info.get("user_id"))]["api_key"] = generate_api_key()
     save_data(users, "users")
+
     return {"ok": True, "message": "Vous avez été déconnecté avec succès", "session_info": session_info}
+
+# -------------------------------------------
+# CRUD Operations on Users
+# -------------------------------------------
+@app.post("/users/add")
+async def add_user(user_in: UserIn, authorized: bool = Depends(only_admin)):
+    config = load_data("config")
+    config["last_user_id"] += 1
+    save_data(config, "config")
+
+    users = load_data("users")
+    new_user = {"id": config["last_user_id"]} | user_in.dict() | {"api_key": generate_api_key(), "created_at": now()} 
+    users[str(new_user.get("id"))] = new_user
+    save_data(users, "users")
+
+    return {"ok": True, "message": "User added successfully", "user": new_user}
+
+@app.get("/users", response_model=UsersListResponse)
+def get_users(authorized: bool = Depends(only_admin)):
+    users = load_data("users")
+    return {"ok": True, "users": users}
+
+@app.get("/profile", response_model=UserProfileResponse)
+def get_user_profile(session: dict = Depends(verify_authentication_approval)):
+    users = load_data("users")
+    user_profile = users.get(str(session.get("user_id")))
+    return {"ok": True, "user": user_profile}
 
 # -------------------------------------------
 # CRUD Operations on Reports
 # -------------------------------------------
-class FileOut(BaseModel):
-    id: int
-    path: str
-    name: str # filename
-    type: str # content_type
+# Test 
+@app.post("/post/add")
+async def add_post(text: str = Form(""), files: List[UploadFile] = File([])):
+    config = load_data("config")
+    new_post_id = config.get("last_post_id")+1
+    config["last_post_id"] = new_post_id
+    save_data(config, "config")
 
-class ReportContent(BaseModel):
-    text: Optional[str] = ""
-    files: Optional[List[UploadFile]] = []
+    posts = load_data("posts")
+    
+    files_info = []
+    for f in files:
+        filename = f.filename
+        files_info.append(await save_file(f, f"files/posts/{new_post_id}/{filename}"))
 
-class Report(BaseModel):
-    id: int
-    title: str
-    content: Optional[ReportContent] = None
-    user_id: str
-    day: str
-    time: str
+    new_post = {"id": new_post_id, "content": {"text": text, "files": files_info}, "day": now("date"), "time": now("time")}
+    posts.append(new_post)
 
-class DayReport(BaseModel):
-    day: str
-    records: List[Report]
-    validated: bool
-    validated_by: int
-
-class UserReports(BaseModel):
-    items: Dict[str, DayReport]
-    user_id: int
-
-class ReportIn(BaseModel):
-    title: str
-    content: Optional[ReportContent] = None
-
-class ReportEdit(ReportIn):
-    id: int
-    title: Optional[str] = ""
-    content: Optional[ReportContent] = None
-    files_to_delete: Optional[List[int]] = []
-
-class ReportsListResponse(BaseModel):
-    ok: bool
-    reports: Dict[str, UserReports]
+    save_data(posts, "posts")
+    return {"ok": True, "message": "Post added successfully", "post": new_post}
 
 @app.post("/reports/add")
-async def add_report(report: ReportIn, session: Session = Depends(verify_authentication_approval)):
-    reports = load_data("reports")
+async def add_report(report: ReportIn, files: List[UploadFile] = File([]), session: dict = Depends(verify_authentication_approval)):
     config = load_data("config")
+    new_record_id = config.get("last_record_id")+1
+    config["last_record_id"] = new_record_id
+    save_data(config, "config")
     
+    reports = load_data("reports")
+
     user_id = session.get("user_id")
     current_day = now("date")
     
     user_reports = reports.get(str(user_id), {"items": {}, "user_id": user_id})
     
-    day_report = user_reports.get(current_day, {"records": [], "day": current_day, "validated": False, "validated_by": -1})
+    day_report = user_reports.get("items").get(current_day, {"records": [], "day": current_day, "validated": False, "validated_by": -1})
     
-    new_record_id = config.get("last_record_id")+1
-    files = report.content.files
     files_info = []
     for f in files:
-        ext = f.filename.split(".")[-1]
-        files_info.append(save_file(f, f"files/reports/{new_record_id}/{f.filename}.{ext}"))
+        filename = f.filename
+        files_info.append(await save_file(f, f"files/reports/{new_record_id}/{filename}"))
 
-    report_content = {"text": report.content.text, "files": files_info}
+    report_content = {"text": report.text, "files": files_info}
     new_report = {"id": new_record_id, "title": report.title, "content": report_content, "user_id": user_id, "day": current_day, "time": now("time")}
     day_report["records"].append(new_report)
-    config["last_record_id"] = new_record_id
     user_reports["items"][current_day] = day_report
-    reports[user_id] = user_reports
+    reports[str(user_id)] = user_reports
 
     save_data(reports, "reports")
-    save_data(config, "config")
     return {"ok": True, "message": "Report added successfully", "report": new_report}
 
 @app.get("/reports")
-def get_reports(session: Session = Depends(verify_authentication_approval)):
+def get_reports(session: dict = Depends(verify_authentication_approval)):
     reports = load_data("reports")
     if is_admin(session.get("api_key")):  
         return {"ok": True, "reports": reports}
@@ -181,10 +173,9 @@ def get_reports(session: Session = Depends(verify_authentication_approval)):
     return {"ok": True, "reports": reports.get(str(user_id), {})}
 
 @app.patch("/reports/edit")
-async def delete_report(edited_report: ReportEdit, session: Session = Depends(verify_authentication_approval)):
-    user_id = session.get("user_id")
-    print("edited report", "\n", edited_report.dict())
+async def edit_report(edited_report: ReportEdit, files: List[UploadFile] = File([]), session: dict = Depends(verify_authentication_approval)):
     reports = load_data("reports")
+    user_id = session.get("user_id")
 
     user_reports = reports.get(str(user_id), {})
     if not user_reports:
@@ -202,79 +193,32 @@ async def delete_report(edited_report: ReportEdit, session: Session = Depends(ve
 
     new_files_info = await delete_files(records[record_index]["content"]["files"], set(edited_report.files_to_delete))
 
-    new_files = edited_report.content.files
-    for f in new_files:
-        ext = f.filename.split(".")[-1]
-        new_files_info.append(await save_file(f, f"files/reports/{edited_report.id}/{f.filename}.{ext}"))
+    for f in files:
+        filename = f.filename
+        new_files_info.append(await save_file(f, f"files/reports/{edited_report.id}/{filename}"))
 
-    edited_report_dict = {
-        "title": edited_report.title or records[record_index]["title"], 
-        "time": now("time"),
-        "content": {
-            "text": edited_report.content.text or records[record_index]["content"]["text"],
-            "files": new_files_info
-        }
-    }
     day_report["records"][record_index]["title"] = edited_report.title or records[record_index]["title"]
     day_report["records"][record_index]["time"] = now("time")
-    day_report["records"][record_index]["content"]["text"] = edited_report.content.text or records[record_index]["content"]["text"]
+    day_report["records"][record_index]["content"]["text"] = edited_report.text or records[record_index]["content"]["text"]
     day_report["records"][record_index]["content"]["files"] = new_files_info
-    print("finally\n", day_report)
+
     user_reports["items"][now("date")].update(day_report)
-    print("finally user reports", user_reports)
     reports[str(user_id)].update(user_reports)
-    print("finally reports dict", reports)
     
     save_data(reports, "reports")
+    return {"ok": True, "message": "Record edited successfully"}
 
+@app.get("/files/{path:path}")
+async def get_protected_file(path: str, session: dict = Depends(verify_authentication_approval)):
+    full_path = Path("files").joinpath(path)
 
-# -------------------------------------------
-# CRUD Operations on Users
-# -------------------------------------------
-class User(BaseModel):
-    id: int
-    username: str
-    role: str
-    phone: str
-    email: str
-    api_key: str
-    created_at: str
+    if ".." in path:
+        raise HTTPException(status_code=400, detail="Invalid path")
 
-class UserIn(BaseModel):
-    username: str
-    role: str
-    phone: str
-    email: str
+    if not Path(full_path).exists():
+        raise HTTPException(status_code=404, detail="File not found")
 
-class UsersListResponse(BaseModel):
-    ok: bool
-    users: Dict[int, User]
-    
-class UserProfileResponse(BaseModel):
-    ok: bool
-    user: User
-
-@app.post("/users/add")
-async def add_user(user_in: UserIn, authorized: bool = Depends(only_admin)):
-    users = load_data("users")
-    config = load_data("config")
-    config["last_user_id"] += 1
-    new_user = {"id": config["last_user_id"]} | user_in.dict() | {"api_key": generate_api_key(), "created_at": now()} 
-    users[str(new_user.get("id"))] = new_user
-    save_data(users, "users")
-    save_data(config, "config")
-    return {"ok": True, "message": "User added successfully", "user": new_user}
-
-@app.get("/users", response_model=UsersListResponse)
-def get_users(authorized: bool = Depends(only_admin)):
-    users = load_data("users")
-    return {"ok": True, "users": users}
-
-@app.get("/profile", response_model=UserProfileResponse)
-def get_user_profile(session: Session = Depends(verify_authentication_approval)):
-    users = load_data("users")
-    user_profile = users.get(str(session.get("user_id")))
-    return {"ok": True, "user": user_profile}
+    return FileResponse(full_path)
 
 
 if __name__ == "__main__":
