@@ -1,7 +1,7 @@
 from datetime import datetime
 from pathlib import Path
 from fastapi import Header, HTTPException, UploadFile
-import secrets
+import secrets, shutil
 
 def load_data(object_category="reports"):
     data_file = f"database/{object_category}.json"
@@ -15,7 +15,6 @@ def load_data(object_category="reports"):
     return {}
 
 def save_data(data, object_category="reports"):
-    print(f"saving {object_category}...\n", "Received data: \n", data, "\n")
     import json
     data_file = f"database/{object_category}.json"
     with open(data_file, "w", encoding="utf-8") as f:
@@ -23,22 +22,17 @@ def save_data(data, object_category="reports"):
 
 async def save_file(f: UploadFile, path: str):
     config = load_data("config")
-    print("1", config)
     config["last_file_id"] = config["last_file_id"] + 1
-    print("2", config)
     new_file_id = config["last_file_id"]
-    print("3", config)
     
     folder = Path(path).parent
     ext = f.filename.split(".")[-1]
     new_path = Path(folder).joinpath(f"{new_file_id}.{ext}")
 
-    print("4", config)
     Path(folder).mkdir(parents=True, exist_ok=True)
     with open(new_path, "wb") as out_file:
         out_file.write(await f.read())
     
-    print("5", config)
     save_data(config, "config")
     return {"id": new_file_id, "name": f.filename, "type": f.content_type, "path": str(new_path)}
 
@@ -50,6 +44,13 @@ async def delete_files(files, target_files):
         else:
             new_list.append(f)
     return new_list
+
+async def delete_dir(path):
+    if Path(path).exists():
+        shutil.rmtree(path)
+        return {"ok": True, "message": "Directory successfully deleted"}
+    else:
+        return {"ok": False, "message": "Directory not found"}
 
 def verify_api_key(x_api_key: str = Header(...)):
     if user := next(

@@ -137,7 +137,7 @@ async def add_post(text: str = Form(""), files: List[UploadFile] = File([])):
 
 
 @app.post("/reports/add")
-async def add_report(title: str = Form(...), text: Optional[str] = Form(""), files: List[UploadFile] = File([]), session: dict = Depends(verify_authentication_approval)):
+async def add_report(title: str = Form(...), text: Optional[str] = Form(""), files: Optional[List[UploadFile]] = File([]), session: dict = Depends(verify_authentication_approval)):
     config = load_data("config")
     new_record_id = config.get("last_record_id")+1
     config["last_record_id"] = new_record_id
@@ -175,43 +175,46 @@ def get_reports(session: dict = Depends(verify_authentication_approval)):
     return {"ok": True, "reports": reports.get(str(user_id), {})}
 
 @app.patch("/reports/edit")
-async def edit_report(edited_report: ReportEdit, files: List[UploadFile] = File([]), session: dict = Depends(verify_authentication_approval)):
+async def edit_report(id: int = Form(...), title: Optional[str] = Form(""), text: Optional[str] = Form(""), files_to_delete: Optional[List[int]] = None, files: Optional[List[UploadFile]] = File([]), session: dict = Depends(verify_authentication_approval)):
+    if files_to_delete is None:
+        files_to_delete = []
     reports = load_data("reports")
     user_id = session.get("user_id")
 
     user_reports = reports.get(str(user_id), {})
     if not user_reports:
         return {"ok": True, "message": "You have no reports"}
-    
+
     day_report = user_reports.get("items").get(now("date"), {})
     if not day_report:
         return {"ok": True, "message": "You have no active reports"}
     print("day_report", day_report)
-    
+
     records = day_report.get("records")
-    record_index = next((i for i,u in enumerate(records) if u.get("id") == edited_report.id), -1)
+    record_index = next((i for i,u in enumerate(records) if u.get("id") == id), -1)
     if record_index == -1:
         raise HTTPException(status_code=401, detail="Invalid report index !")
 
-    new_files_info = await delete_files(records[record_index]["content"]["files"], set(edited_report.files_to_delete))
+    new_files_info = await delete_files(records[record_index]["content"]["files"], set(files_to_delete))
 
     for f in files:
         filename = f.filename
-        new_files_info.append(await save_file(f, f"files/reports/{edited_report.id}/{filename}"))
+        new_files_info.append(await save_file(f, f"files/reports/{id}/{filename}"))
 
-    day_report["records"][record_index]["title"] = edited_report.title or records[record_index]["title"]
+    day_report["records"][record_index]["title"] = title or records[record_index]["title"]
     day_report["records"][record_index]["time"] = now("time")
-    day_report["records"][record_index]["content"]["text"] = edited_report.text or records[record_index]["content"]["text"]
+    day_report["records"][record_index]["content"]["text"] = text or records[record_index]["content"]["text"]
     day_report["records"][record_index]["content"]["files"] = new_files_info
 
     user_reports["items"][now("date")].update(day_report)
     reports[str(user_id)].update(user_reports)
-    
+
     save_data(reports, "reports")
     return {"ok": True, "message": "Record edited successfully", "report": day_report["records"][record_index]}
 
-@app.delete("/reports/delete/{id:id}")
-async def edit_report(session: dict = Depends(verify_authentication_approval)):
+@app.delete("/reports/delete/{id:path}")
+async def delete_report(id: int, session: dict = Depends(verify_authentication_approval)):
+    print("Deleting id ", id)
     reports = load_data("reports")
     user_id = session.get("user_id")
 
@@ -230,6 +233,9 @@ async def edit_report(session: dict = Depends(verify_authentication_approval)):
         raise HTTPException(status_code=401, detail="Invalid report index !")
 
     deleted_record = day_report["records"].pop(record_index)
+    res = await delete_dir(f"files/reports/{id}")
+    if not res.get("ok"):
+        raise HTTPException(status_code=401, detail = "An error occured while attempting to delete report")
     
     user_reports["items"][now("date")].update(day_report)
     reports[str(user_id)].update(user_reports)
@@ -252,5 +258,5 @@ async def get_protected_file(path: str, session: dict = Depends(verify_authentic
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=5060)
+    uvicorn.run(app, host="0.0.0.0", port=500)
 

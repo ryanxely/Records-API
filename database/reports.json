@@ -4,52 +4,39 @@
             "03-12-2025": {
                 "records": [
                     {
-                        "id": 4,
-                        "title": "Fucking",
-                        "content": {
-                            "text": "Hello fuck you",
-                            "files": [
-                                {
-                                    "id": 3,
-                                    "name": "0408(1).mp4",
-                                    "type": null,
-                                    "path": "files\\reports\\4\\3.mp4"
-                                },
-                                {
-                                    "id": 4,
-                                    "name": "City Hunter - Super Girl.mp3",
-                                    "type": null,
-                                    "path": "files\\reports\\4\\4.mp3"
-                                }
-                            ]
-                        },
-                        "user_id": 1,
-                        "day": "03-12-2025",
-                        "time": "10:18:35"
-                    },
-                    {
                         "id": 5,
                         "title": "I just fucked her",
                         "content": {
                             "text": "Ficking is a good thing. When you fuck, you grow",
                             "files": [
                                 {
-                                    "id": 5,
-                                    "name": "Untitled.png",
-                                    "type": "image/png",
-                                    "path": "files\\reports\\5\\5.png"
+                                    "id": 12,
+                                    "name": "City Hunter - Super Girl.mp3",
+                                    "type": null,
+                                    "path": "files\\reports\\5\\12.mp3"
                                 },
                                 {
-                                    "id": 6,
-                                    "name": "Tableau de Bord pour l.docx",
-                                    "type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                                    "path": "files\\reports\\5\\6.docx"
+                                    "id": 13,
+                                    "name": "City Hunter - Super Girl.mp3",
+                                    "type": null,
+                                    "path": "files\\reports\\5\\13.mp3"
                                 }
                             ]
                         },
                         "user_id": 1,
                         "day": "03-12-2025",
-                        "time": "10:22:00"
+                        "time": "14:50:10"
+                    },
+                    {
+                        "id": 6,
+                        "title": "Today",
+                        "content": {
+                            "text": "Hello fuck you",
+                            "files": []
+                        },
+                        "user_id": 1,
+                        "day": "03-12-2025",
+                        "time": "14:39:44"
                     }
                 ],
                 "day": "03-12-2025",
