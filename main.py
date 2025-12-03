@@ -223,5 +223,5 @@ async def get_protected_file(path: str, session: dict = Depends(verify_authentic
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=500)
+    uvicorn.run(app, host="0.0.0.0", port=5060)
 

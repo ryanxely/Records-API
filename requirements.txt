@@ -1,3 +1,4 @@
-fastapi
+fastapi[stardard]
 uvicorn
 python-multipart
+numpy
