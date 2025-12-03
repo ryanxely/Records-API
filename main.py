@@ -134,6 +134,8 @@ async def add_post(text: str = Form(""), files: List[UploadFile] = File([])):
     save_data(posts, "posts")
     return {"ok": True, "message": "Post added successfully", "post": new_post}
 
+
+
 @app.post("/reports/add")
 async def add_report(title: str = Form(...), text: Optional[str] = Form(""), files: List[UploadFile] = File([]), session: dict = Depends(verify_authentication_approval)):
     config = load_data("config")
@@ -206,7 +208,34 @@ async def edit_report(edited_report: ReportEdit, files: List[UploadFile] = File(
     reports[str(user_id)].update(user_reports)
     
     save_data(reports, "reports")
-    return {"ok": True, "message": "Record edited successfully"}
+    return {"ok": True, "message": "Record edited successfully", "report": day_report["records"][record_index]}
+
+@app.delete("/reports/delete/{id:id}")
+async def edit_report(session: dict = Depends(verify_authentication_approval)):
+    reports = load_data("reports")
+    user_id = session.get("user_id")
+
+    user_reports = reports.get(str(user_id), {})
+    if not user_reports:
+        return {"ok": True, "message": "You have no reports"}
+    
+    day_report = user_reports.get("items").get(now("date"), {})
+    if not day_report:
+        return {"ok": True, "message": "You have no active reports"}
+    print("day_report", day_report)
+    
+    records = day_report.get("records")
+    record_index = next((i for i,u in enumerate(records) if u.get("id") == id), -1)
+    if record_index == -1:
+        raise HTTPException(status_code=401, detail="Invalid report index !")
+
+    deleted_record = day_report["records"].pop(record_index)
+    
+    user_reports["items"][now("date")].update(day_report)
+    reports[str(user_id)].update(user_reports)
+    
+    save_data(reports, "reports")
+    return {"ok": True, "message": "Record deleted successfully", "report": deleted_record}
 
 @app.get("/files/{path:path}")
 async def get_protected_file(path: str, session: dict = Depends(verify_authentication_approval)):
