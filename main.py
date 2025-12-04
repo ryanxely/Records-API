@@ -12,7 +12,8 @@ origins = [
     "http://127.0.0.1:5050",
     "http://127.0.0.1",
     "http://localhost:5050",
-    "http://localhost"
+    "http://localhost",
+    "http://srvgc:5050"
 ]
 app.add_middleware(
     CORSMiddleware,
@@ -93,7 +94,7 @@ async def add_user(user_in: UserIn, authorized: bool = Depends(only_admin)):
     save_data(config, "config")
 
     users = load_data("users")
-    new_user = {"id": config["last_user_id"]} | user_in.dict() | {"api_key": generate_api_key(), "created_at": now()} 
+    new_user = {"id": config["last_user_id"]} | user_in.dict() | {"api_key": generate_api_key(), "created_at": now(), "last_edit_at": ""} 
     users[str(new_user.get("id"))] = new_user
     save_data(users, "users")
 
@@ -109,6 +110,45 @@ def get_user_profile(session: dict = Depends(verify_authentication_approval)):
     users = load_data("users")
     user_profile = users.get(str(session.get("user_id")))
     return {"ok": True, "user": user_profile}
+
+@app.patch("/profile/edit")
+async def edit_profile(username: Optional[str] = Form(""), phone: Optional[str] = Form(""), profile_image: Optional[UploadFile] = File(), session: dict = Depends(verify_authentication_approval)):
+    if files_to_delete is None:
+        files_to_delete = []
+    reports = load_data("reports")
+    user_id = session.get("user_id")
+
+    user_reports = reports.get(str(user_id), {})
+    if not user_reports:
+        return {"ok": True, "message": "You have no reports"}
+
+    day_report = user_reports.get("items").get(now("date"), {})
+    if not day_report:
+        return {"ok": True, "message": "You have no active reports"}
+    print("day_report", day_report)
+
+    records = day_report.get("records")
+    record_index = next((i for i,u in enumerate(records) if u.get("id") == id), -1)
+    if record_index == -1:
+        raise HTTPException(status_code=401, detail="Invalid report index !")
+
+    new_files_info = await delete_files(records[record_index]["content"]["files"], set(files_to_delete))
+
+    for f in files:
+        filename = f.filename
+        new_files_info.append(await save_file(f, f"files/reports/{id}/{filename}"))
+
+    day_report["records"][record_index]["title"] = title or records[record_index]["title"]
+    day_report["records"][record_index]["last_edit_at"] = now("time")
+    day_report["records"][record_index]["content"]["text"] = text or records[record_index]["content"]["text"]
+    day_report["records"][record_index]["content"]["files"] = new_files_info
+
+    user_reports["items"][now("date")].update(day_report)
+    reports[str(user_id)].update(user_reports)
+
+    save_data(reports, "reports")
+    return {"ok": True, "message": "Record edited successfully", "report": day_report["records"][record_index]}
+
 
 # -------------------------------------------
 # CRUD Operations on Reports
@@ -138,6 +178,7 @@ async def add_post(text: str = Form(""), files: List[UploadFile] = File([])):
 
 @app.post("/reports/add")
 async def add_report(title: str = Form(...), text: Optional[str] = Form(""), files: Optional[List[UploadFile]] = File([]), session: dict = Depends(verify_authentication_approval)):
+    print("\n>> Adding report...\n>> Received data:", title, text, files, sep=" - ")
     config = load_data("config")
     new_record_id = config.get("last_record_id")+1
     config["last_record_id"] = new_record_id
@@ -158,7 +199,7 @@ async def add_report(title: str = Form(...), text: Optional[str] = Form(""), fil
         files_info.append(await save_file(f, f"files/reports/{new_record_id}/{filename}"))
 
     report_content = {"text": text, "files": files_info}
-    new_report = {"id": new_record_id, "title": title, "content": report_content, "user_id": user_id, "day": current_day, "time": now("time")}
+    new_report = {"id": new_record_id, "title": title, "content": report_content, "user_id": user_id, "day": current_day, "created_at": now("time"), "last_edit_at": ""}
     day_report["records"].append(new_report)
     user_reports["items"][current_day] = day_report
     reports[str(user_id)] = user_reports
@@ -176,6 +217,7 @@ def get_reports(session: dict = Depends(verify_authentication_approval)):
 
 @app.patch("/reports/edit")
 async def edit_report(id: int = Form(...), title: Optional[str] = Form(""), text: Optional[str] = Form(""), files_to_delete: Optional[List[int]] = None, files: Optional[List[UploadFile]] = File([]), session: dict = Depends(verify_authentication_approval)):
+    print("\n>> Editing report...\n>> Received data:", id, title, text, files, sep=" - ")
     if files_to_delete is None:
         files_to_delete = []
     reports = load_data("reports")
@@ -202,7 +244,7 @@ async def edit_report(id: int = Form(...), title: Optional[str] = Form(""), text
         new_files_info.append(await save_file(f, f"files/reports/{id}/{filename}"))
 
     day_report["records"][record_index]["title"] = title or records[record_index]["title"]
-    day_report["records"][record_index]["time"] = now("time")
+    day_report["records"][record_index]["last_edit_at"] = now("time")
     day_report["records"][record_index]["content"]["text"] = text or records[record_index]["content"]["text"]
     day_report["records"][record_index]["content"]["files"] = new_files_info
 
@@ -233,9 +275,10 @@ async def delete_report(id: int, session: dict = Depends(verify_authentication_a
         raise HTTPException(status_code=401, detail="Invalid report index !")
 
     deleted_record = day_report["records"].pop(record_index)
-    res = await delete_dir(f"files/reports/{id}")
-    if not res.get("ok"):
-        raise HTTPException(status_code=401, detail = "An error occured while attempting to delete report")
+    if deleted_record.get("content").get("files"):
+        res = await delete_dir(f"files/reports/{id}")
+        if not res.get("ok"):
+            raise HTTPException(status_code=401, detail = "An error occured while attempting to delete report")
     
     user_reports["items"][now("date")].update(day_report)
     reports[str(user_id)].update(user_reports)
@@ -258,5 +301,5 @@ async def get_protected_file(path: str, session: dict = Depends(verify_authentic
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=500)
+    uvicorn.run(app, host="0.0.0.0", port=8000)
 

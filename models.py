@@ -26,8 +26,21 @@ class User(BaseModel):
     role: str
     phone: str
     email: str
+    profile_image: Optional[str] = ""
     api_key: str
     created_at: str
+    last_edit_at: Optional[str] = ""
+
+class UserIn(BaseModel):
+    username: str
+    role: str
+    phone: str
+    email: str
+
+class ProfileEdit(BaseModel):
+    id: int = Form(...)
+    username: Optional[str] = Form("")
+    phone: Optional[str] = Form("")
 
 class UserIn(BaseModel):
     username: str
@@ -59,7 +72,8 @@ class Report(BaseModel):
     content: Optional[ReportContent] = None
     user_id: str
     day: str
-    time: str
+    created_at: str
+    last_edit_at: Optional[str] = ""
 
 class DayReport(BaseModel):
     day: str

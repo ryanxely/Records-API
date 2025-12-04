@@ -1,34 +1,3 @@
 [
-    {
-        "id": 1,
-        "content": {
-            "text": "Hello fuck you\"",
-            "files": [
-                {
-                    "id": 1,
-                    "name": "0408(1).mp4",
-                    "type": null,
-                    "path": "files\\posts\\1\\1.mp4"
-                }
-            ]
-        },
-        "day": "02-12-2025",
-        "time": "19:43:54"
-    },
-    {
-        "id": 2,
-        "content": {
-            "text": "Hello",
-            "files": [
-                {
-                    "id": 2,
-                    "name": "Ai Furihata – City Hunter Ai yo Kienaide.m4a",
-                    "type": "audio/x-m4a",
-                    "path": "files\\posts\\2\\2.m4a"
-                }
-            ]
-        },
-        "day": "03-12-2025",
-        "time": "10:07:57"
-    }
+   
 ]
