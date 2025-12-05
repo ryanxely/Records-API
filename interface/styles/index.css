@@ -1,4 +1,6 @@
 * {
+    margin: 0;
+    padding: 0;
     box-sizing: border-box;
 }
 
@@ -6,7 +8,7 @@ body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
     margin: 0;
     padding: 20px;
-    background: #75918d;
+    background: #d1e3e1;
 }
 
 .container {
@@ -15,7 +17,7 @@ body {
 }
 
 /* Navigation d'en-tête */
-.header-nav {
+.header {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -26,25 +28,32 @@ body {
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
 }
 
-.header-nav h2 {
-    margin: 0;
-    font-size: 21px;
-    font-weight: 600;
-    color: #2d3748;
-    display: flex;
-    align-items: center;
-    gap: 10px;
+.header h1 {
+    font-family: 'Poppins', sans-serif;
+    font-family: "Chokokutai", system-ui;
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 0;
+    letter-spacing: -0.5px;
 }
 
-.header-nav-links {
+.header p {
+    color: var(--text-secondary);
+    font-size: 12px;
+    line-height: 1.6;
+}
+
+.header nav {
     display: flex;
     gap: 12px;
     align-items: center;
 }
 
-.view-reports-link {
+.nav-link {
     text-decoration: none;
     background: #009688;
+    border: solid 1px #009688;
     color: white;
     padding: 11px 20px;
     border-radius: 7px;
@@ -56,17 +65,17 @@ body {
     gap: 7px;
 }
 
-.view-reports-link:hover {
+.nav-link:hover {
     background: #009688;
     transform: translateY(-1px);
     box-shadow: 0 3px 10px rgba(23, 162, 184, 0.25);
 }
 
 .logout-btn {
-    background: transparent;
-    color: #009688;
+    background: #f2d8d8;
+    color: #c53030;
     padding: 11px 20px;
-    border: 1px solid #e2e8f0;
+    border: 1px solid #c53030;
     border-radius: 7px;
     font-weight: 500;
     font-size: 14px;
@@ -79,9 +88,8 @@ body {
 }
 
 .logout-btn:hover {
-    background: #f7fafc;
-    border-color: #cbd5e0;
-    color: #009688;
+    background: #c53030;
+    color: white;
 }
 
 /* Carte de saisie du titre */
@@ -284,7 +292,10 @@ input#title:focus {
 .actions {
     display: flex;
     gap: 12px;
-    margin-bottom: 18px;
+    margin-bottom: 0;
+    bottom: 10px;
+    left: 20px;
+    width: 100%;
 }
 
 button {
@@ -331,11 +342,19 @@ button.secondary:hover {
     background: white;
     border-radius: 8px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
-    display: none;
+    /* display: none; */
+    position: fixed;
+    top: -20px;
+    left: 20px;
+    width: calc(100% - 40px);
+    opacity: 0;
+    transition-duration: .5s;
 }
 
 .status.show {
-    display: block;
+    /* display: block; */
+    top: 20px;
+    opacity: 1;
 }
 
 .status.error {
@@ -374,22 +393,28 @@ button.secondary:hover {
         height: 240px;
     }
 
-    .header-nav {
+    .header {
         flex-direction: column;
         align-items: flex-start;
         gap: 14px;
     }
 
-    .header-nav-links {
+    .header .title {
+        width: 100%;
+        text-align: center;
+    }
+
+    .header nav {
         width: 100%;
         flex-direction: column;
     }
 
     .actions {
         flex-direction: column;
+        position: sticky;
     }
 
-    .view-reports-link,
+    .nav-link,
     .logout-btn {
         width: 100%;
         justify-content: center;

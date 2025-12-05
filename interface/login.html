@@ -50,6 +50,8 @@
                 <span>Se connecter</span>
                 <div class="loading-spinner"></div>
             </button>
+
+            <div id="statusMessage" class="status"></div>
         </form>
     </div>
 
@@ -83,7 +85,7 @@
             const value = valueInput.value.trim();
 
             if (!value) {
-                showStatus(statusMessage, 'Veuillez saisir vos informations', true);
+                showStatus(statusMessage, 'Veuillez saisir vos informations');
                 return;
             }
 
@@ -108,6 +110,7 @@
                 console.log(data)
 
                 if (!response.ok) {
+                    showStatus(statusMessage, data.detail, true);
                     throw new Error(data.detail || data.message || 'Échec de la connexion');
                 }
 

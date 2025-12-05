@@ -189,7 +189,11 @@
                 clearPendingLogin();
 
                 showStatus(statusEl, '✅ Verified! Redirecting...');
-                setTimeout(() => { window.location.href = 'index.html'; }, 700);
+                setTimeout(() => {
+                    let profile = getUserProfile()
+                    if (profile.role == "Administrator") window.location.href = 'view.html'; 
+                    else window.location.href = 'index.html'; 
+                }, 700);
 
             } catch (err) {
                 console.error('OTP verify error', err);

@@ -25,18 +25,19 @@
 
 <body>
     <div class="container">
-        <div>
-            <a href="index.html" class="back-link">← Créer un rapport</a>
-            <a href="profile.html" class="back-link">👤 Profil</a>
-            <button class="logout-btn" onclick="handleLogout()">🚪 Déconnexion</button>
-        </div>
-
         <div class="header">
-            <h1>Mes rapports</h1>
-            <p id="userInfo">Chargement...</p>
+            <div class="title">
+                <h1>Mes rapports</h1>
+                <p id="userInfo">Chargement...</p>
+            </div>
+            <nav>
+                <a href="index.html" class="nav-link">← Créer un rapport</a>
+                <a href="profile.html" class="nav-link">👤 Profil</a>
+                <button class="logout-btn" onclick="handleLogout()">🔗 Déconnexion</button>
+            </nav>
         </div>
 
-        <div class="nav-buttons">
+        <div class="nav-buttons" style="display: none">
             <button id="btnListView" class="active">📋 Tous les rapports</button>
             <button id="btnViewReport" style="display: none;">👁️ Visualiser le rapport</button>
             <button id="btnEditView" style="display: none;">✏️ Modifier le rapport</button>
@@ -69,8 +70,8 @@
                     </div>
                     <input type="file" id="editFilesInput" multiple
                         accept="image/*,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,audio/*,video/*">
-                    <div style="font-size:12px;color:#718096;margin-top:6px;">Pris en charge : images, PDF, DOCX, audio,
-                        vidéo. Cochez les éléments à supprimer avant d'enregistrer.</div>
+                    <!-- <div style="font-size:12px;color:#718096;margin-top:6px;">Pris en charge : images, PDF, DOCX, audio,
+                        vidéo. Cochez les éléments à supprimer avant d'enregistrer.</div> -->
                 </div>
                 <div class="form-actions">
                     <button class="btn btn-primary" id="btnSaveEdit">
