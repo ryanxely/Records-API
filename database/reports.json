@@ -20,13 +20,37 @@
                                     "name": "Ryan's Folder_8.jpg",
                                     "type": "image/jpeg",
                                     "path": "files\\reports\\3\\4.jpg"
+                                },
+                                {
+                                    "id": 5,
+                                    "name": "computer.png",
+                                    "type": "image/png",
+                                    "path": "files\\reports\\3\\5.png"
+                                },
+                                {
+                                    "id": 6,
+                                    "name": "Capture d’écran (5).png",
+                                    "type": "image/png",
+                                    "path": "files\\reports\\3\\6.png"
                                 }
                             ]
                         },
                         "user_id": 1,
                         "day": "05-12-2025",
                         "created_at": "02:39:41",
-                        "last_edit_at": "03:16:28"
+                        "last_edit_at": "03:54:29"
+                    },
+                    {
+                        "id": 4,
+                        "title": "",
+                        "content": {
+                            "text": "",
+                            "files": []
+                        },
+                        "user_id": 1,
+                        "day": "05-12-2025",
+                        "created_at": "04:00:01",
+                        "last_edit_at": ""
                     }
                 ],
                 "day": "05-12-2025",

@@ -68,10 +68,22 @@
                     <label>Pièces jointes</label>
                     <div id="existingFilesContainer" style="margin-bottom:8px; display:flex; gap:8px; flex-wrap:wrap;">
                     </div>
-                    <input type="file" id="editFilesInput" multiple
-                        accept="image/*,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,audio/*,video/*">
+                    <!-- <input type="file" id="editFilesInput" multiple
+                        accept="image/*,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,audio/*,video/*"> -->
                     <!-- <div style="font-size:12px;color:#718096;margin-top:6px;">Pris en charge : images, PDF, DOCX, audio,
                         vidéo. Cochez les éléments à supprimer avant d'enregistrer.</div> -->
+                    <hr><br>
+                    <hr>
+                    <div class="file-upload-area" onclick="document.getElementById('fileInput').click()">
+                        <input type="file" id="fileInput"
+                            accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip,.rar"
+                            multiple />
+                        <div class="file-upload-text">
+                            <strong>Cliquez pour sélectionner</strong> ou glissez-déposez vos fichiers<br>
+                            <small>Images, vidéos, audio, documents (PDF, Word, Excel, etc.)</small>
+                        </div>
+                    </div>
+                    <div id="preview" class="preview"></div>
                 </div>
                 <div class="form-actions">
                     <button class="btn btn-primary" id="btnSaveEdit">
@@ -161,6 +173,7 @@
         const reportsList = document.getElementById('reportsList');
         const statusMessage = document.getElementById('statusMessage');
         const userInfo = document.getElementById('userInfo');
+        const previewEl = document.getElementById('preview');
 
         // ===== Initialize Quill for Edit View =====
         function initEditQuill() {
@@ -503,7 +516,7 @@
                 editQuill.root.innerHTML = report.content?.text || '';
                 // Populate existing files UI and reset file input
                 populateExistingFiles(report);
-                const fi = document.getElementById('editFilesInput');
+                const fi = document.getElementById('fileInput');
                 if (fi) fi.value = null;
                 switchView('edit');
             } else {
@@ -577,6 +590,109 @@
             attachFilePreviews(container);
         }
 
+        let selectedFilesData = [];
+         /**
+         * Crée un élément de prévisualisation pour un fichier
+         */
+        function createPreviewElement(fileData, index) {
+            const item = document.createElement('div');
+            item.className = 'preview-item';
+
+            const removeBtn = document.createElement('button');
+            removeBtn.className = 'preview-item-remove';
+            removeBtn.innerHTML = '×';
+            removeBtn.onclick = (e) => {
+                e.stopPropagation();
+                removeFile(index);
+            };
+
+            if (fileData.type.startsWith('image/')) {
+                const img = document.createElement('img');
+                img.src = fileData.data;
+                img.alt = fileData.name;
+                item.appendChild(img);
+            } else if (fileData.type.startsWith('video/')) {
+                const video = document.createElement('video');
+                video.src = fileData.data;
+                video.controls = false;
+                video.muted = true;
+                item.appendChild(video);
+            } else {
+                const fileDiv = document.createElement('div');
+                fileDiv.className = 'preview-item-file';
+
+                const icon = document.createElement('div');
+                icon.className = 'preview-item-file-icon';
+                icon.textContent = getFileIcon(fileData.type);
+
+                const name = document.createElement('div');
+                name.className = 'preview-item-file-name';
+                name.textContent = fileData.name;
+
+                fileDiv.appendChild(icon);
+                fileDiv.appendChild(name);
+                item.appendChild(fileDiv);
+            }
+
+            const info = document.createElement('div');
+            info.className = 'preview-item-info';
+            info.textContent = formatFileSize(fileData.size);
+            item.appendChild(info);
+
+            item.appendChild(removeBtn);
+
+            return item;
+        }
+
+        /**
+         * Supprime un fichier de la sélection
+         */
+        function removeFile(index) {
+            selectedFilesData.splice(index, 1);
+            updatePreview();
+        }
+
+        /**
+         * Met à jour l'affichage de la prévisualisation
+         */
+        function updatePreview() {
+            previewEl.innerHTML = '';
+            selectedFilesData.forEach((fileData, index) => {
+                const element = createPreviewElement(fileData, index);
+                previewEl.appendChild(element);
+            });
+        }
+
+        /**
+         * Lit les fichiers sélectionnés
+         */
+        async function readFiles(files) {
+            const readers = Array.from(files).map(file => {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = () => resolve({
+                        name: file.name,
+                        type: file.type,
+                        data: reader.result,
+                        size: file.size
+                    });
+                    reader.onerror = reject;
+                    reader.readAsDataURL(file);
+                });
+            });
+
+            try {
+                const filesData = await Promise.all(readers);
+                // Ajouter les nouveaux fichiers aux fichiers existants
+                selectedFilesData.push(...filesData);
+                updatePreview();
+            } catch (err) {
+                console.error('Erreur lors de la lecture des fichiers:', err);
+                showStatus('Erreur lors de la lecture des fichiers', true);
+            }
+        }
+
+
         // ===== Save Edit =====
         document.getElementById('btnSaveEdit').addEventListener('click', async function () {
             if (!currentEditingReport) return;
@@ -598,10 +714,34 @@
             const authToken = getAuthToken();
 
             // Collect new files and deletions
-            const filesInput = document.getElementById('editFilesInput');
+            const filesInput = document.getElementById('fileInput');
             const newFiles = filesInput ? Array.from(filesInput.files) : [];
             const deleteChecks = Array.from(document.querySelectorAll('.file-delete-checkbox:checked'));
 
+            // Gestion du glisser-déposer
+            const uploadArea = document.querySelector('.file-upload-area');
+
+            uploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadArea.style.borderColor = '#138496';
+                uploadArea.style.background = '#e6fcff';
+            });
+
+            uploadArea.addEventListener('dragleave', (e) => {
+                e.preventDefault();
+                uploadArea.style.borderColor = '#17a2b8';
+                uploadArea.style.background = '#f0fdff';
+            });
+
+            uploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadArea.style.borderColor = '#17a2b8';
+                uploadArea.style.background = '#f0fdff';
+
+                if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                    readFiles(e.dataTransfer.files);
+                }
+            });
             // Use data-fileid attribute for IDs
             const filesToDelete = deleteChecks.map(cb => cb.getAttribute('data-fileid')).filter(Boolean);
 
