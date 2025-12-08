@@ -103,6 +103,30 @@ def now(type: str = "datetime"):
     elif type == "time":
         d_format = "%H:%M:%S"
     return datetime.now().strftime(d_format)
+
+from datetime import datetime
+
+def validate_reports():
+    reports = load_data("reports")
+    today = datetime.now().date()
+
+    for user_reports in reports.values():
+        for day_str, report in user_reports.get("items", {}).items():
+
+            try:
+                report_date = datetime.strptime(day_str, "%d-%m-%Y").date()
+            except ValueError:
+                continue
+
+            if report_date < today and not report.get("validated"):
+                report["validated"] = True
+                report["validated_by"] = 0
+
+    save_data(reports, "reports")
+
+
+    
+
 # -------------------------------------------------
 # Automatic mails
 # -------------------------------------------------

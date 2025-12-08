@@ -159,7 +159,6 @@ input#title:focus {
     top: 0;
     left: 0;
     cursor: pointer;
-    pointer-events: none;
 }
 
 .file-upload-text {
@@ -424,46 +423,4 @@ button.secondary:hover {
     .preview {
         grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
     }
-}
-
-/* Accordion Styles */
-.accordion-section {
-    overflow: hidden;
-}
-
-.accordion-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    cursor: pointer;
-    padding: 0;
-    margin-bottom: 14px;
-    user-select: none;
-    transition: all 0.2s ease;
-}
-
-.accordion-header:hover {
-    opacity: 0.8;
-}
-
-.accordion-header label {
-    cursor: pointer;
-    margin-bottom: 0;
-}
-
-.accordion-icon {
-    font-size: 14px;
-    color: #009688;
-    transition: transform 0.3s ease;
-    display: inline-block;
-}
-
-.accordion-content {
-    max-height: 2000px;
-    overflow: hidden;
-    transition: max-height 0.3s ease;
-}
-
-.accordion-content.collapsed {
-    max-height: 0;
 }

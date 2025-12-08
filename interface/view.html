@@ -4,7 +4,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Mes rapports — Mini App</title>
+    <title>Rapports — Mini App</title>
 
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -27,7 +27,7 @@
     <div class="container">
         <div class="header">
             <div class="title">
-                <h1>Mes rapports</h1>
+                <h1 id="pageTitle">Mes rapports</h1>
                 <p id="userInfo">Chargement...</p>
             </div>
             <nav>
@@ -56,45 +56,64 @@
         <div id="editView" class="view">
             <div class="edit-form">
                 <h2 style="margin-bottom: 20px; color: #2d3748;">Modifier le rapport</h2>
-                <div class="form-group">
-                    <label for="editTitle">Title</label>
-                    <input type="text" id="editTitle" placeholder="Titre du rapport">
+
+                <!-- Title Card -->
+                <div class="title-card form-group">
+                    <label>Titre</label>
+                    <input id="editTitle" placeholder="Titre du rapport" required />
                 </div>
-                <div class="form-group">
-                    <label>Content</label>
-                    <div id="editEditor"></div>
-                </div>
-                <div class="form-group">
-                    <label>Pièces jointes</label>
-                    <div id="existingFilesContainer" style="margin-bottom:8px; display:flex; gap:8px; flex-wrap:wrap;">
+
+                <!-- Content Accordion Section -->
+                <div class="editor-card accordion-section form-group">
+                    <div class="accordion-header" onclick="toggleAccordion('edit-content')">
+                        <label>✍️ Contenu</label>
+                        <span class="accordion-icon" id="edit-content-icon" style="transform: rotate(-90deg)">▼</span>
                     </div>
-                    <!-- <input type="file" id="editFilesInput" multiple
-                        accept="image/*,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,audio/*,video/*"> -->
-                    <!-- <div style="font-size:12px;color:#718096;margin-top:6px;">Pris en charge : images, PDF, DOCX, audio,
-                        vidéo. Cochez les éléments à supprimer avant d'enregistrer.</div> -->
-                    <hr><br>
-                    <hr>
-                    <div class="file-upload-area" onclick="document.getElementById('fileInput').click()">
-                        <input type="file" id="fileInput"
-                            accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip,.rar"
-                            multiple />
-                        <div class="file-upload-text">
-                            <strong>Cliquez pour sélectionner</strong> ou glissez-déposez vos fichiers<br>
-                            <small>Images, vidéos, audio, documents (PDF, Word, Excel, etc.)</small>
+                    <div class="accordion-content collapsed" id="edit-content-content">
+                        <div id="editEditor"></div>
+                    </div>
+                </div>
+
+                <!-- Attachments Accordion Section -->
+                <div class="form-row accordion-section form-group">
+                    <div class="accordion-header" onclick="toggleAccordion('attachments')">
+                        <label>📎 Pièces jointes</label>
+                        <span class="accordion-icon" id="attachments-icon" style="transform: rotate(-90deg)">▼</span>
+                    </div>
+
+                    <div class="form-row accordion-section">
+                        <div class="accordion-content collapsed" id="attachments-content">
+                            <!-- Existing Files -->
+                            <div id="existingFilesContainer" style="margin-bottom:16px;"></div>
+
+                            <!-- New Files Upload -->
+                            <div class="file-upload-area" id="editFileUploadArea">
+                                <input type="file" id="editFileInput"
+                                    accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip,.rar"
+                                    multiple />
+                                <div class="file-upload-text">
+                                    <strong>Cliquez pour sélectionner</strong> ou glissez-déposez vos fichiers<br>
+                                    <small>Images, vidéos, audio, documents (PDF, Word, Excel, etc.)</small>
+                                </div>
+                            </div>
+                            <div id="preview" class="preview"></div>
                         </div>
                     </div>
-                    <div id="preview" class="preview"></div>
+
                 </div>
+
+
+                <!-- Action Buttons -->
                 <div class="form-actions">
                     <button class="btn btn-primary" id="btnSaveEdit">
-                        <span>💾 Enregistrerr</span>
+                        <span>💾 Enregistrer</span>
                         <div class="loading-spinner"></div>
                     </button>
-
                     <button class="btn btn-secondary" id="btnCancelEdit">Annuler</button>
                 </div>
             </div>
         </div>
+
         <!-- Visualize View (admin) -->
         <div id="viewReport" class="view">
             <div class="edit-form">
@@ -152,6 +171,7 @@
 
         // ===== Configuration =====
         const REPORTS_API_URL = getApiUrl(CONFIG.REPORTS_GET);
+        const USERS_API_URL = getApiUrl(CONFIG.USERS_GET);
 
         // ===== Telegram WebApp =====
         const tg = window.Telegram.WebApp;
@@ -161,6 +181,7 @@
         let currentView = 'list';
         let currentEditingReport = null;
         let allReports = [];
+        let allUsers = [];
         let editQuill = null;
 
         // ===== DOM Elements =====
@@ -173,6 +194,7 @@
         const reportsList = document.getElementById('reportsList');
         const statusMessage = document.getElementById('statusMessage');
         const userInfo = document.getElementById('userInfo');
+        const fileInput = document.getElementById('editFileInput');
         const previewEl = document.getElementById('preview');
 
         // ===== Initialize Quill for Edit View =====
@@ -280,6 +302,56 @@
             }
         }
 
+        // ===== Fetch Users =====
+        async function fetchUsers() {
+            try {
+                const apiKey = getApiKey('reports');
+                if (!apiKey) {
+                    displayStatus('Clé API des rapports manquante. Veuillez vous reconnecter.', true);
+                    reportsList.innerHTML = '<div class="empty-state">Clé API manquante. Veuillez <a href="login.html">vous reconnecter</a>.</div>';
+                    return;
+                }
+
+                const headers = {
+                    'accept': 'application/json',
+                    'x-api-key': apiKey
+                };
+
+                const authToken = getAuthToken();
+                if (authToken) headers['Authorization'] = 'Bearer ' + authToken;
+
+                const response = await fetch(USERS_API_URL, {
+                    method: 'GET',
+                    headers: headers
+                });
+
+
+
+                if (response.status === 401) {
+                    // session expired
+                    displayStatus('Session expirée. Redirection vers la page de connexion...', true);
+                    handleSessionExpiry();
+                    return;
+                }
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+
+                console.log('Fetch users response:', data);
+                if (data.ok && data.users) {
+                    allUsers = data.users;
+                } else {
+                    displayStatus('Impossible de charger les données utilisateurs', true);
+                }
+            } catch (error) {
+                console.error('Error fetching reports:', error);
+                displayStatus('Erreur lors du chargement des utilisateurs', true);
+            }
+        }
+
         // ===== Render Reports =====
         function renderReports() {
             // Get logged-in user to check if admin
@@ -332,6 +404,7 @@
                     html += `<div class="day-section">
                         <div class="day-header">📅 ${day}</div>`;
 
+                   
                     records.forEach(report => {
                         const contentText = report.content?.text || 'Aucun contenu';
                         const cleanText = String(contentText).replace(/<[^>]*>/g, '');
@@ -368,10 +441,7 @@
                                 <div class="report-meta">🕐 Cree a  ${report.created_at} ${report.last_edit_at && "- Modifie a"} ${report.last_edit_at} • ID: ${report.id}</div>
                                 <div class="report-content">${contentPreview}${cleanText.length > 100 ? '...' : ''}</div>
                                 ${filesHtml}
-                                <div class="report-actions">
-                                    <button class="btn btn-edit" onclick="editReport(${report.id}, '${day}')">✏️ Modifier</button>
-                                    <button class="btn btn-delete" onclick="deleteReport(${report.id})">🗑️ Supprimer</button>
-                                </div>
+                                ${dayData.validated ? `<div class="report-validated">Se Rapport a deja ete validé</div>` : `<div class="report-actions"><button class="btn btn-edit" onclick="editReport(${report.id}, '${day}')">✏️ Modifier</button> <button class="btn btn-delete" onclick="deleteReport(${report.id})">🗑️ Supprimer</button></div>`}
                             </div>
                         `;
                     });
@@ -400,20 +470,24 @@
 
             userIds.forEach(userId => {
                 const userData = reportsObj[userId];
+                const userProfile = allUsers[userId] || {};
                 const items = userData?.items || {};
                 const dayKeys = Object.keys(items);
 
+                console.log(`User ${userId} profile: ${JSON.stringify(userProfile)}`)
+
                 if (dayKeys.length > 0) {
                     // User section header
-                    const username = `User ${userId}`;
-                    const avatarHtml = `<div style="width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; margin-right: 12px; font-size: 14px;">${username.charAt(0).toUpperCase()}</div>`;
+                    let username = userProfile.username || `User ${userId}`
+                    let fullname = userProfile.fullname || username
+                    const avatarHtml = `<div style="width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; margin-right: 12px; font-size: 14px;">${fullname.charAt(0).toUpperCase()}</div>`;
 
                     html += `<div style="background: rgba(102, 126, 234, 0.1); padding: 16px; margin-bottom: 16px; border-radius: 12px; border-left: 4px solid #667eea;">
                 <div style="display: flex; align-items: center; margin-bottom: 12px;">
                     ${avatarHtml}
                     <div>
-                        <div style="font-size: 16px; font-weight: 700; color: #2d3748;">👤 ${username}</div>
-                        <div style="font-size: 13px; color: #718096;">ID: ${userId}</div>
+                        <div style="font-size: 16px; font-weight: 700; color: #2d3748;">👤 ${fullname}</div>
+                        <div style="font-size: 13px; color: #718096;">@${username}</div>
                     </div>
                 </div>`;
 
@@ -516,8 +590,7 @@
                 editQuill.root.innerHTML = report.content?.text || '';
                 // Populate existing files UI and reset file input
                 populateExistingFiles(report);
-                const fi = document.getElementById('fileInput');
-                if (fi) fi.value = null;
+                if (fileInput) fileInput.value = null;
                 switchView('edit');
             } else {
                 displayStatus('Rapport introuvable', true);
@@ -590,108 +663,39 @@
             attachFilePreviews(container);
         }
 
-        let selectedFilesData = [];
-         /**
-         * Crée un élément de prévisualisation pour un fichier
-         */
-        function createPreviewElement(fileData, index) {
-            const item = document.createElement('div');
-            item.className = 'preview-item';
 
-            const removeBtn = document.createElement('button');
-            removeBtn.className = 'preview-item-remove';
-            removeBtn.innerHTML = '×';
-            removeBtn.onclick = (e) => {
-                e.stopPropagation();
-                removeFile(index);
-            };
+        // ===== Accordion Toggle Function =====
+        function toggleAccordion(sectionId, strict_action = "") {
+            const content = document.getElementById(sectionId + '-content');
+            const icon = document.getElementById(sectionId + '-icon');
 
-            if (fileData.type.startsWith('image/')) {
-                const img = document.createElement('img');
-                img.src = fileData.data;
-                img.alt = fileData.name;
-                item.appendChild(img);
-            } else if (fileData.type.startsWith('video/')) {
-                const video = document.createElement('video');
-                video.src = fileData.data;
-                video.controls = false;
-                video.muted = true;
-                item.appendChild(video);
+            if (strict_action == "fold") {
+                // Collapse
+                content.style.maxHeight = '0px';
+                icon.style.transform = 'rotate(-90deg)';
+                if (!content.classList.contains("collapsed")) content.classList.add("collapsed")
+                return
+            }
+            if (strict_action == "unfold") {
+                // Expand
+                content.style.maxHeight = content.scrollHeight + 'px';
+                icon.style.transform = 'rotate(0deg)';
+                if (content.classList.contains("collapsed")) content.classList.remove("collapsed")
+                return
+            }
+
+            if (content.style.maxHeight && content.style.maxHeight !== '0px') {
+                // Collapse
+                content.style.maxHeight = '0px';
+                icon.style.transform = 'rotate(-90deg)';
+                if (!content.classList.contains("collapsed")) content.classList.add("collapsed")
             } else {
-                const fileDiv = document.createElement('div');
-                fileDiv.className = 'preview-item-file';
-
-                const icon = document.createElement('div');
-                icon.className = 'preview-item-file-icon';
-                icon.textContent = getFileIcon(fileData.type);
-
-                const name = document.createElement('div');
-                name.className = 'preview-item-file-name';
-                name.textContent = fileData.name;
-
-                fileDiv.appendChild(icon);
-                fileDiv.appendChild(name);
-                item.appendChild(fileDiv);
-            }
-
-            const info = document.createElement('div');
-            info.className = 'preview-item-info';
-            info.textContent = formatFileSize(fileData.size);
-            item.appendChild(info);
-
-            item.appendChild(removeBtn);
-
-            return item;
-        }
-
-        /**
-         * Supprime un fichier de la sélection
-         */
-        function removeFile(index) {
-            selectedFilesData.splice(index, 1);
-            updatePreview();
-        }
-
-        /**
-         * Met à jour l'affichage de la prévisualisation
-         */
-        function updatePreview() {
-            previewEl.innerHTML = '';
-            selectedFilesData.forEach((fileData, index) => {
-                const element = createPreviewElement(fileData, index);
-                previewEl.appendChild(element);
-            });
-        }
-
-        /**
-         * Lit les fichiers sélectionnés
-         */
-        async function readFiles(files) {
-            const readers = Array.from(files).map(file => {
-                return new Promise((resolve, reject) => {
-                    const reader = new FileReader();
-                    reader.onload = () => resolve({
-                        name: file.name,
-                        type: file.type,
-                        data: reader.result,
-                        size: file.size
-                    });
-                    reader.onerror = reject;
-                    reader.readAsDataURL(file);
-                });
-            });
-
-            try {
-                const filesData = await Promise.all(readers);
-                // Ajouter les nouveaux fichiers aux fichiers existants
-                selectedFilesData.push(...filesData);
-                updatePreview();
-            } catch (err) {
-                console.error('Erreur lors de la lecture des fichiers:', err);
-                showStatus('Erreur lors de la lecture des fichiers', true);
+                // Expand
+                content.style.maxHeight = content.scrollHeight + 'px';
+                icon.style.transform = 'rotate(0deg)';
+                if (content.classList.contains("collapsed")) content.classList.remove("collapsed")
             }
         }
-
 
         // ===== Save Edit =====
         document.getElementById('btnSaveEdit').addEventListener('click', async function () {
@@ -714,34 +718,9 @@
             const authToken = getAuthToken();
 
             // Collect new files and deletions
-            const filesInput = document.getElementById('fileInput');
-            const newFiles = filesInput ? Array.from(filesInput.files) : [];
+            const newFiles = fileInput ? Array.from(fileInput.files) : [];
             const deleteChecks = Array.from(document.querySelectorAll('.file-delete-checkbox:checked'));
 
-            // Gestion du glisser-déposer
-            const uploadArea = document.querySelector('.file-upload-area');
-
-            uploadArea.addEventListener('dragover', (e) => {
-                e.preventDefault();
-                uploadArea.style.borderColor = '#138496';
-                uploadArea.style.background = '#e6fcff';
-            });
-
-            uploadArea.addEventListener('dragleave', (e) => {
-                e.preventDefault();
-                uploadArea.style.borderColor = '#17a2b8';
-                uploadArea.style.background = '#f0fdff';
-            });
-
-            uploadArea.addEventListener('drop', (e) => {
-                e.preventDefault();
-                uploadArea.style.borderColor = '#17a2b8';
-                uploadArea.style.background = '#f0fdff';
-
-                if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-                    readFiles(e.dataTransfer.files);
-                }
-            });
             // Use data-fileid attribute for IDs
             const filesToDelete = deleteChecks.map(cb => cb.getAttribute('data-fileid')).filter(Boolean);
 
@@ -765,11 +744,11 @@
                     });
                 }
 
-
-                // Attach each file as a separate 'files' field (not as array)
-                if (newFiles.length != 0) {
-                    newFiles.forEach(f => {
-                        form.append('files', f, f.name);
+                // Joindre les fichiers
+                if (selectedFilesData && selectedFilesData.length > 0) {
+                    selectedFilesData.forEach((fd, i) => {
+                        const blob = dataURLToBlob(fd.data);
+                        form.append(`files`, blob, fd.name);
                     });
                 }
 
@@ -807,6 +786,13 @@
                 if (data && typeof data === 'object') {
                     if (data.ok) {
                         displayStatus('✅ Rapport mis à jour avec succès !');
+                        selectedFilesData = [];
+                        updatePreview();
+                        toggleAccordion('attachments', 'fold')
+                        toggleAccordion('edit-content', 'fold')
+
+                        // Effacer les brouillons du localStorage
+                        clearDraftData();
                         await fetchReports();
                         switchView('list');
                     } else {
@@ -816,6 +802,13 @@
                     // No JSON body; treat 2xx as success, otherwise error
                     if (response.ok) {
                         displayStatus('✅ Rapport mis à jour avec succès !');
+                        selectedFilesData = [];
+                        updatePreview();
+                        toggleAccordion('attachments', 'fold')
+                        toggleAccordion('edit-content', 'fold')
+
+                        // Effacer les brouillons du localStorage
+                        clearDraftData();
                         await fetchReports();
                         switchView('list');
                     } else {
@@ -904,6 +897,10 @@
         // ===== Show User Info =====
         const userProfile = getUserProfile();
         displayUserInfo(userInfo, userProfile, tg.initDataUnsafe?.user);
+        if (userProfile.role === "Administrator") {
+            document.querySelector("#pageTitle").innerHTML = "Rapports Soumis"
+            fetchUsers();
+        }
 
         // ===== Initialize =====
         fetchReports();
@@ -1067,12 +1064,57 @@
             switchView('list');
         }
 
-
         function closeFilePreview() {
             const modal = document.getElementById('filePreviewModal');
             modal.classList.remove('active');
             document.getElementById('previewBody').innerHTML = '';
         }
+
+        // Gestion du changement de fichier
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files && e.target.files.length > 0) {
+                readFiles(e.target.files);
+                // Réinitialiser l'input pour permettre la sélection du même fichier
+                e.target.value = '';
+            }
+        });
+
+        // Gestion du glisser-déposer
+        const uploadArea = document.querySelector('.file-upload-area');
+
+        // Click handler for upload area (prevents double-opening)
+        uploadArea.addEventListener('click', (e) => {
+            // Only trigger file input if not clicking on the file input itself
+            if (e.target !== fileInput) {
+                fileInput.click();
+            }
+        });
+
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            uploadArea.style.borderColor = '#138496';
+            uploadArea.style.background = '#e6fcff';
+        });
+
+        uploadArea.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            uploadArea.style.borderColor = '#17a2b8';
+            uploadArea.style.background = '#f0fdff';
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            uploadArea.style.borderColor = '#17a2b8';
+            uploadArea.style.background = '#f0fdff';
+
+            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                readFiles(e.dataTransfer.files);
+            }
+        });
+
 
         // Close modal when clicking outside
         document.getElementById('filePreviewModal').addEventListener('click', function (e) {

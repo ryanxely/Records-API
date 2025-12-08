@@ -16,10 +16,12 @@ const CONFIG = {
     REPORTS_GET: '/reports',
     REPORTS_EDIT: '/reports/edit',
     REPORTS_DELETE: '/reports/delete',
-
+    
     // User endpoints
     PROFILE: '/profile',
-    PROFILE_UPDATE: '/profile/update'
+    PROFILE_UPDATE: '/profile/update',
+    USERS_GET: '/users'
+
 };
 
 // Helper function to build full API URL

@@ -1,5 +1,5 @@
 from fastapi import Form
-from pydantic import BaseModel
+from pydantic import BaseModel, validator
 from typing import List, Optional, Dict
 from enum import Enum
 
@@ -23,6 +23,7 @@ class Session(BaseModel):
 class User(BaseModel):
     id: int
     username: str
+    fullname: Optional[str] = ""
     role: str
     phone: str
     email: str
@@ -31,22 +32,32 @@ class User(BaseModel):
     created_at: str
     last_edit_at: Optional[str] = ""
 
+    @validator('fullname', pre=True, always=True)
+    def set_fullname_default(cls, v, values):
+        if v == "" or v is None and 'username' in values:
+            return values['username']
+        return v
+
+
 class UserIn(BaseModel):
     username: str
+    fullname: Optional[str] = ""
     role: str
     phone: str
     email: str
+
+    @validator('fullname', pre=True, always=True)
+    def set_fullname_default(cls, v, values):
+        if v == "" or v is None and 'username' in values:
+            return values['username']
+        return v
+
 
 class ProfileEdit(BaseModel):
     id: int = Form(...)
     username: Optional[str] = Form("")
+    fullname: Optional[str] = Form("")
     phone: Optional[str] = Form("")
-
-class UserIn(BaseModel):
-    username: str
-    role: str
-    phone: str
-    email: str
 
 class UsersListResponse(BaseModel):
     ok: bool

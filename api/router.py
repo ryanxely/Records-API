@@ -4,9 +4,10 @@ from typing import List
 
 from api.models import *
 from api.utilities import *
+
 router = APIRouter()
 
-@router.get("/status")
+@router.get("/")
 def root():
     return {"ok": True, "message": "Welcome to the Report API"}
 
@@ -24,14 +25,12 @@ async def login(credentials: Credentials):
     sessions = load_data("sessions")
     if sessions.get(user.get("api_key"), {}).get("approved"):
         old_session_info = logout(sessions.get(user.get("api_key"))).get("session_info")
-        print("=============in login==================")
-        print(old_session_info)
         result = await login(Credentials(**old_session_info.get("credentials")))
         return {"ok": True, "api_key": result.get("api_key"), "message": "Your previous session has been reinitialised. Please grant us the new verification code we sent you"}
     session = {"credentials": credentials, "user_id": user.get("id"), "code": generate_verification_code(), "approved": False, "start_time": "", "api_key": user.get("api_key")} 
     sessions[user.get("api_key")] = session
     save_data(sessions, "sessions")
-    send_verification_code(user.get("email"), session.get("code"))
+    # send_verification_code(user.get("email"), session.get("code"))
     return {"ok": True, "api_key": user.get("api_key"), "message": "We sent you a verification code on your email address", "email": user.get("email")}
 
 
@@ -41,8 +40,6 @@ async def verify_login(code: str, session: dict = Depends(verify_authentication)
     sessions = load_data("sessions")
     if sessions.get(api_key).get("approved"):
         old_session_info = logout(sessions.get(api_key)).get("session_info")
-        print("=============in verify==================")
-        print(old_session_info)
         result = await login(Credentials(**old_session_info.get("credentials")))
         return {"ok": True, "api_key": result.get("api_key"), "message": "Your previous session has been reinitialised. Please grant us the new verification code we sent you"}
     elif not sessions.get(api_key).get("code"):
@@ -78,6 +75,8 @@ async def add_user(user_in: UserIn, authorized: bool = Depends(only_admin)):
     save_data(config, "config")
 
     users = load_data("users")
+    user_in = user_in.dict()
+    user_in["fullname"] = user_in["fullname"] or user_in["username"]
     new_user = {"id": config["last_user_id"]} | user_in.dict() | {"api_key": generate_api_key(), "created_at": now(), "last_edit_at": ""} 
     users[str(new_user.get("id"))] = new_user
     save_data(users, "users")
@@ -193,6 +192,7 @@ async def add_report(title: str = Form(...), text: Optional[str] = Form(""), fil
 
 @router.get("/reports")
 def get_reports(session: dict = Depends(verify_authentication_approval)):
+    validate_reports()
     reports = load_data("reports")
     if is_admin(session.get("api_key")):  
         return {"ok": True, "reports": reports}
@@ -214,12 +214,12 @@ async def edit_report(id: int = Form(...), title: Optional[str] = Form(""), text
     day_report = user_reports.get("items").get(now("date"), {})
     if not day_report:
         return {"ok": True, "message": "You have no active reports"}
-    print("day_report", day_report)
 
     records = day_report.get("records")
     record_index = next((i for i,u in enumerate(records) if u.get("id") == id), -1)
     if record_index == -1:
         raise HTTPException(status_code=401, detail="Invalid report index !")
+    
 
     new_files_info = await delete_files(records[record_index]["content"]["files"], set(files_to_delete))
 
@@ -234,6 +234,8 @@ async def edit_report(id: int = Form(...), title: Optional[str] = Form(""), text
 
     user_reports["items"][now("date")].update(day_report)
     reports[str(user_id)].update(user_reports)
+
+    print("===============After edit, Reports Content===============", reports)
 
     save_data(reports, "reports")
     return {"ok": True, "message": "Record edited successfully", "report": day_report["records"][record_index]}

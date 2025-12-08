@@ -28,17 +28,19 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Web app
-app.mount("/static", StaticFiles(directory="interface", html=True), "static")
-@app.get("/{path:path}")
-def serve_interface(path: str = "index.html"):
-    return FileResponse(f"interface/{path}")
-
 # API Router
 app.include_router(router, prefix="/api")
+
+# Web app
+app.mount("/", StaticFiles(directory="interface", html=True), "static")
+
+@app.exception_handler(404)
+async def custom_404_handler(request, exc):
+    return FileResponse("interface/index.html")
 
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=500)
+    uvicorn.run(app, host="0.0.0.0", port=8000)
+    validate_reports()
 

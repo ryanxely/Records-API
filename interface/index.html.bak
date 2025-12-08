@@ -46,38 +46,26 @@
         </div>
 
         <div class="title-card">
-            <input id="title" placeholder="Titre du rapport" required />
-        </div>
-        
-        <div class="editor-card accordion-section">
-            <div class="accordion-header" onclick="toggleAccordion('content')">
-                <label>✍️ Contenu</label>
-                <span class="accordion-icon" id="content-icon" style="transform: rotate(-90deg)">▼</span>
-            </div>
-            <div class="accordion-content" id="content-content" style="max-height: 0px;">
-                <div id="editor"></div>
-            </div>
+            <input id="title" placeholder="Titre du rapport" required/>
         </div>
 
-        <div class="form-row accordion-section">
-            <div class="accordion-header" onclick="toggleAccordion('attachments')">
-                <label>📎 Pièces jointes</label>
-                <span class="accordion-icon" id="attachments-icon" style="transform: rotate(-90deg)">▼</span>
-            </div>
-            <div class="accordion-content" id="attachments-content" style="max-height: 0px;">
-                <div class="file-upload-area" id="fileUploadArea">
-                    <input type="file" id="fileInput"
-                        accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip,.rar"
-                        multiple />
-                    <div class="file-upload-text">
-                        <strong>Cliquez pour sélectionner</strong> ou glissez-déposez vos fichiers<br>
-                        <small>Images, vidéos, audio, documents (PDF, Word, Excel, etc.)</small>
-                    </div>
+        <div class="form-row">
+            <label for="fileInput">📎 Pièces jointes</label>
+            <div class="file-upload-area" onclick="document.getElementById('fileInput').click()">
+                <input type="file" id="fileInput"
+                    accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip,.rar" multiple />
+                <div class="file-upload-text">
+                    <strong>Cliquez pour sélectionner</strong> ou glissez-déposez vos fichiers<br>
+                    <small>Images, vidéos, audio, documents (PDF, Word, Excel, etc.)</small>
                 </div>
-                <div id="preview" class="preview"></div>
             </div>
+            <div id="preview" class="preview"></div>
         </div>
 
+        <div class="editor-card">
+            <label for="editor">✍️ Contenu</label>
+            <div id="editor"></div>
+        </div>
 
         <div class="status" id="status"></div>
 
@@ -96,7 +84,6 @@
     <script src="js/storage.js"></script>
     <script src="js/api.js"></script>
     <script src="js/dom-helpers.js"></script>
-    <script src="js/file-previews.js"></script>
     <script>
         // ===== Vérification d'authentification =====
         requireAuth();
@@ -126,6 +113,153 @@
         const previewBtn = document.getElementById("previewBtn");
         const fileInput = document.getElementById('fileInput');
         const previewEl = document.getElementById('preview');
+
+        let selectedFilesData = [];
+
+        // ===== Utilitaires =====
+
+        /**
+         * Convertit une URL de données en Blob
+         */
+        function dataURLToBlob(dataURL) {
+            const parts = dataURL.split(',');
+            const mime = parts[0].match(/:(.*?);/)[1];
+            const bstr = atob(parts[1]);
+            let n = bstr.length;
+            const u8arr = new Uint8Array(n);
+            while (n--) {
+                u8arr[n] = bstr.charCodeAt(n);
+            }
+            return new Blob([u8arr], { type: mime });
+        }
+
+        /**
+         * Formate la taille du fichier
+         */
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Octets';
+            const k = 1024;
+            const sizes = ['Octets', 'Ko', 'Mo', 'Go'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+        }
+
+        /**
+         * Obtient l'icône pour un type de fichier
+         */
+        function getFileIcon(type) {
+            if (type.startsWith('image/')) return '🖼️';
+            if (type.startsWith('video/')) return '🎥';
+            if (type.startsWith('audio/')) return '🎵';
+            if (type.includes('pdf')) return '📄';
+            if (type.includes('word') || type.includes('document')) return '📝';
+            if (type.includes('sheet') || type.includes('excel')) return '📊';
+            if (type.includes('presentation') || type.includes('powerpoint')) return '📽️';
+            if (type.includes('zip') || type.includes('rar') || type.includes('compressed')) return '🗜️';
+            if (type.includes('text')) return '📃';
+            return '📎';
+        }
+
+        /**
+         * Crée un élément de prévisualisation pour un fichier
+         */
+        function createPreviewElement(fileData, index) {
+            const item = document.createElement('div');
+            item.className = 'preview-item';
+
+            const removeBtn = document.createElement('button');
+            removeBtn.className = 'preview-item-remove';
+            removeBtn.innerHTML = '×';
+            removeBtn.onclick = (e) => {
+                e.stopPropagation();
+                removeFile(index);
+            };
+
+            if (fileData.type.startsWith('image/')) {
+                const img = document.createElement('img');
+                img.src = fileData.data;
+                img.alt = fileData.name;
+                item.appendChild(img);
+            } else if (fileData.type.startsWith('video/')) {
+                const video = document.createElement('video');
+                video.src = fileData.data;
+                video.controls = false;
+                video.muted = true;
+                item.appendChild(video);
+            } else {
+                const fileDiv = document.createElement('div');
+                fileDiv.className = 'preview-item-file';
+
+                const icon = document.createElement('div');
+                icon.className = 'preview-item-file-icon';
+                icon.textContent = getFileIcon(fileData.type);
+
+                const name = document.createElement('div');
+                name.className = 'preview-item-file-name';
+                name.textContent = fileData.name;
+
+                fileDiv.appendChild(icon);
+                fileDiv.appendChild(name);
+                item.appendChild(fileDiv);
+            }
+
+            const info = document.createElement('div');
+            info.className = 'preview-item-info';
+            info.textContent = formatFileSize(fileData.size);
+            item.appendChild(info);
+
+            item.appendChild(removeBtn);
+
+            return item;
+        }
+
+        /**
+         * Supprime un fichier de la sélection
+         */
+        function removeFile(index) {
+            selectedFilesData.splice(index, 1);
+            updatePreview();
+        }
+
+        /**
+         * Met à jour l'affichage de la prévisualisation
+         */
+        function updatePreview() {
+            previewEl.innerHTML = '';
+            selectedFilesData.forEach((fileData, index) => {
+                const element = createPreviewElement(fileData, index);
+                previewEl.appendChild(element);
+            });
+        }
+
+        /**
+         * Lit les fichiers sélectionnés
+         */
+        async function readFiles(files) {
+            const readers = Array.from(files).map(file => {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = () => resolve({
+                        name: file.name,
+                        type: file.type,
+                        data: reader.result,
+                        size: file.size
+                    });
+                    reader.onerror = reject;
+                    reader.readAsDataURL(file);
+                });
+            });
+
+            try {
+                const filesData = await Promise.all(readers);
+                // Ajouter les nouveaux fichiers aux fichiers existants
+                selectedFilesData.push(...filesData);
+                updatePreview();
+            } catch (err) {
+                console.error('Erreur lors de la lecture des fichiers:', err);
+                showStatus('Erreur lors de la lecture des fichiers', true);
+            }
+        }
 
         /**
          * Affiche un message de statut
@@ -158,31 +292,20 @@
         // Gestion du glisser-déposer
         const uploadArea = document.querySelector('.file-upload-area');
 
-        // Click handler for upload area (prevents double-opening)
-        uploadArea.addEventListener('click', (e) => {
-            // Only trigger file input if not clicking on the file input itself
-            if (e.target !== fileInput) {
-                fileInput.click();
-            }
-        });
-
         uploadArea.addEventListener('dragover', (e) => {
             e.preventDefault();
-            e.stopPropagation();
             uploadArea.style.borderColor = '#138496';
             uploadArea.style.background = '#e6fcff';
         });
 
         uploadArea.addEventListener('dragleave', (e) => {
             e.preventDefault();
-            e.stopPropagation();
             uploadArea.style.borderColor = '#17a2b8';
             uploadArea.style.background = '#f0fdff';
         });
 
         uploadArea.addEventListener('drop', (e) => {
             e.preventDefault();
-            e.stopPropagation();
             uploadArea.style.borderColor = '#17a2b8';
             uploadArea.style.background = '#f0fdff';
 
@@ -190,24 +313,6 @@
                 readFiles(e.dataTransfer.files);
             }
         });
-
-
-        // ===== Accordion Toggle Function =====
-        function toggleAccordion(sectionId) {
-            const content = document.getElementById(sectionId + '-content');
-            const icon = document.getElementById(sectionId + '-icon');
-
-            if (content.style.maxHeight && content.style.maxHeight !== '0px') {
-                // Collapse
-                content.style.maxHeight = '0px';
-                icon.style.transform = 'rotate(-90deg)';
-            } else {
-                // Expand
-                content.style.maxHeight = content.scrollHeight + 'px';
-                icon.style.transform = 'rotate(0deg)';
-            }
-        }
-
 
         // Afficher les informations utilisateur
         const userProfile = getUserProfile();
@@ -226,7 +331,7 @@
             // Construire FormData avec le contenu et les fichiers
             const formData = new FormData();
             formData.append("title", title);
-            formData.append("text", content_html);
+            formData.append("content_text", content_html);
 
             // Joindre les fichiers
             if (selectedFilesData && selectedFilesData.length > 0) {

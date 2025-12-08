@@ -4,8 +4,8 @@
             "04-12-2025": {
                 "records": [],
                 "day": "04-12-2025",
-                "validated": false,
-                "validated_by": -1
+                "validated": true,
+                "validated_by": 0
             },
             "05-12-2025": {
                 "records": [
@@ -42,7 +42,7 @@
                     },
                     {
                         "id": 5,
-                        "title": "Systeme Terminé X",
+                        "title": "Systeme Terminé X 4",
                         "content": {
                             "text": "<p>ldmfzero lmkr  ma</p>",
                             "files": [
@@ -73,6 +73,125 @@
                     }
                 ],
                 "day": "05-12-2025",
+                "validated": true,
+                "validated_by": 0
+            },
+            "08-12-2025": {
+                "records": [
+                    {
+                        "id": 7,
+                        "title": "cvbnm",
+                        "content": {
+                            "text": "<p>jjjjj</p>",
+                            "files": [
+                                {
+                                    "id": 23,
+                                    "name": "WhatsApp Image 2025-08-04 at 11.52.58_f6d30f10.jpg",
+                                    "type": "image/jpeg",
+                                    "path": "files\\reports\\7\\23.jpg"
+                                },
+                                {
+                                    "id": 25,
+                                    "name": "computer.png",
+                                    "type": "image/png",
+                                    "path": "files\\reports\\7\\25.png"
+                                },
+                                {
+                                    "id": 33,
+                                    "name": "Ryan's Folder_8.jpg",
+                                    "type": "image/jpeg",
+                                    "path": "files\\reports\\7\\33.jpg"
+                                },
+                                {
+                                    "id": 34,
+                                    "name": "Ryan's Folder_8.jpg",
+                                    "type": "image/jpeg",
+                                    "path": "files\\reports\\7\\34.jpg"
+                                }
+                            ]
+                        },
+                        "user_id": 1,
+                        "day": "08-12-2025",
+                        "created_at": "14:02:28",
+                        "last_edit_at": "14:58:08"
+                    },
+                    {
+                        "id": 8,
+                        "title": "cc",
+                        "content": {
+                            "text": "<p>bnbnbnbnbnb</p>",
+                            "files": [
+                                {
+                                    "id": 14,
+                                    "name": "Tableau de Bord pour l.docx",
+                                    "type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                                    "path": "files\\reports\\8\\14.docx"
+                                }
+                            ]
+                        },
+                        "user_id": 1,
+                        "day": "08-12-2025",
+                        "created_at": "14:04:58",
+                        "last_edit_at": "14:15:55"
+                    },
+                    {
+                        "id": 9,
+                        "title": "c",
+                        "content": {
+                            "text": "<p>bon</p>",
+                            "files": [
+                                {
+                                    "id": 19,
+                                    "name": "liste d'amis combinee.png.jpg",
+                                    "type": "image/jpeg",
+                                    "path": "files\\reports\\9\\19.jpg"
+                                },
+                                {
+                                    "id": 21,
+                                    "name": "Tableau de Bord pour l.docx",
+                                    "type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                                    "path": "files\\reports\\9\\21.docx"
+                                }
+                            ]
+                        },
+                        "user_id": 1,
+                        "day": "08-12-2025",
+                        "created_at": "14:08:07",
+                        "last_edit_at": "14:20:09"
+                    },
+                    {
+                        "id": 10,
+                        "title": "x",
+                        "content": {
+                            "text": "<p>xx</p>",
+                            "files": []
+                        },
+                        "user_id": 1,
+                        "day": "08-12-2025",
+                        "created_at": "14:09:45",
+                        "last_edit_at": ""
+                    },
+                    {
+                        "id": 11,
+                        "title": "zx",
+                        "content": {
+                            "text": "<p>zzxx</p>",
+                            "files": [
+                                {
+                                    "id": 16,
+                                    "name": "Scan_20250918.pdf",
+                                    "type": "application/pdf",
+                                    "path": "files\\reports\\11\\16.pdf"
+                                }
+                            ]
+                        },
+                        "user_id": 1,
+                        "day": "08-12-2025",
+                        "created_at": "14:10:02",
+                        "last_edit_at": "14:10:27"
+                    }
+                ],
+                "day": "08-12-2025",
                 "validated": false,
                 "validated_by": -1
             }
@@ -97,6 +216,25 @@
                     }
                 ],
                 "day": "05-12-2025",
+                "validated": true,
+                "validated_by": 0
+            },
+            "08-12-2025": {
+                "records": [
+                    {
+                        "id": 12,
+                        "title": "vvvvvvvvvvvvvvvv",
+                        "content": {
+                            "text": "<p><br></p>",
+                            "files": []
+                        },
+                        "user_id": 0,
+                        "day": "08-12-2025",
+                        "created_at": "14:53:39",
+                        "last_edit_at": ""
+                    }
+                ],
+                "day": "08-12-2025",
                 "validated": false,
                 "validated_by": -1
             }
