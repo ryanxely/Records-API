@@ -5,7 +5,7 @@
 
 const CONFIG = {
     //API_BASE_URL: "https://srvgc.tailcca3c2.ts.net/reports-api",
-    API_BASE_URL: 'http://127.0.0.1:500',
+    API_BASE_URL: '/api',
 
     // Auth endpoints
     AUTH_LOGIN: '/auth/login',

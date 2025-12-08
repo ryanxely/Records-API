@@ -41,16 +41,35 @@
                         "last_edit_at": "03:54:29"
                     },
                     {
-                        "id": 4,
-                        "title": "",
+                        "id": 5,
+                        "title": "Systeme Terminé X",
                         "content": {
-                            "text": "",
-                            "files": []
+                            "text": "<p>ldmfzero lmkr  ma</p>",
+                            "files": [
+                                {
+                                    "id": 7,
+                                    "name": "Tableau de Bord pour l.docx",
+                                    "type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                                    "path": "files\\reports\\5\\7.docx"
+                                },
+                                {
+                                    "id": 8,
+                                    "name": "Ryan's Folder_8.jpg",
+                                    "type": "image/jpeg",
+                                    "path": "files\\reports\\5\\8.jpg"
+                                },
+                                {
+                                    "id": 9,
+                                    "name": "Scan_20250918 (5).png",
+                                    "type": "image/png",
+                                    "path": "files\\reports\\5\\9.png"
+                                }
+                            ]
                         },
                         "user_id": 1,
                         "day": "05-12-2025",
-                        "created_at": "04:00:01",
-                        "last_edit_at": ""
+                        "created_at": "06:52:22",
+                        "last_edit_at": "06:53:04"
                     }
                 ],
                 "day": "05-12-2025",
