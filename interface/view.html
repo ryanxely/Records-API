@@ -418,7 +418,7 @@
                             files.forEach(f => {
                                 // Normalize stored path to subpath used by files endpoint (remove leading 'files\\' or 'files/')
                                 const rawPath = f.path || f.name || '';
-                                const subpath = (rawPath || '').replace(/^files[\\/]/i, '').replace(/\\/g, '/');
+                                const subpath = (rawPath || '').replace(/^database\/files[\\/]/i, '').replace(/\\/g, '/');
                                 const isImage = /\.(png|jpg|jpeg|gif|webp|bmp|svg)$/i.test(f.name || '');
 
                                 // Escape single quotes for use in onclick attribute
@@ -611,7 +611,7 @@
 
             files.forEach(f => {
                 const rawPath = f.path || f.name || '';
-                const subpath = (rawPath || '').replace(/^files[\\/]/i, '').replace(/\\/g, '/');
+                const subpath = (rawPath || '').replace(/^database\/files[\\/]/i, '').replace(/\\/g, '/');
                 const fileId = f.id || f.file_id || f._id || '';
                 const wrapper = document.createElement('div');
                 wrapper.className = 'existing-file-item';
@@ -703,6 +703,7 @@
 
             const title = document.getElementById('editTitle').value.trim();
             const content = editQuill.root.innerHTML;
+            // const date = document.getElementById('editDate').value;
 
             if (!title) {
                 displayStatus('Veuillez saisir un titre', true);
@@ -733,6 +734,7 @@
                 // Use multipart/form-data when adding/removing files
                 const form = new FormData();
                 form.append('id', currentEditingReport.id);
+                form.append('date', currentEditingReport.day);
                 form.append('title', title);
                 // Append text content using 'text' to match upload form style
                 form.append('text', content);

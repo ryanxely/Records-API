@@ -5,18 +5,30 @@ import secrets, shutil
 
 def load_data(object_category="reports"):
     data_file = f"database/{object_category}.json"
-    if Path(data_file).exists():
-        import json
-        with open(data_file, "r", encoding="utf-8") as f:
-            try:
-                return json.load(f)
-            except json.JSONDecodeError:
-                return {}
-    return {}
+    if not Path(data_file).exists():
+        if files := sorted(Path("database").glob(f"{object_category}_*.json"), reverse=True):
+            data_file = str(files[0])
+        else:
+            return {}
+        
+    import json
+    with open(data_file, "r", encoding="utf-8") as f:
+        try:
+            return json.load(f)
+        except json.JSONDecodeError:
+            return {}
 
 def save_data(data, object_category="reports"):
     import json
     data_file = f"database/{object_category}.json"
+    Path(data_file).parent.mkdir(parents=True, exist_ok=True)
+    if not Path(data_file).exists():
+        if files := sorted(Path("database").glob(f"{object_category}_*.json"), reverse=True):
+            data_file = str(files[0])
+        else:
+            data_file = f"database/{object_category}_{now(d_format='%d%m%Y%H%M%S')}.json"
+            with open(data_file, "w", encoding="utf-8") as f:
+                f.write("{}" if object_category != "reports" else "{}")
     with open(data_file, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
 
@@ -28,6 +40,7 @@ async def save_file(f: UploadFile, path: str):
     folder = Path(path).parent
     ext = f.filename.split(".")[-1]
     new_path = Path(folder).joinpath(f"{new_file_id}.{ext}")
+    new_path = new_path.as_posix()
 
     Path(folder).mkdir(parents=True, exist_ok=True)
     with open(new_path, "wb") as out_file:
@@ -95,9 +108,8 @@ def generate_verification_code():
     from numpy import random
     return "".join([str(a) for a in random.randint(9, size=5)])
 
-def now(type: str = "datetime"):
+def now(type: str = "datetime", d_format: str = "%d-%m-%Y %H:%M:%S"):
     # Default : datetime
-    d_format = "%d-%m-%Y %H:%M:%S"
     if type == "date":
         d_format = "%d-%m-%Y"
     elif type == "time":
@@ -118,7 +130,7 @@ def validate_reports():
             except ValueError:
                 continue
 
-            if report_date < today and not report.get("validated"):
+            if (today - report_date).days >= 7 and not report.get("validated"):
                 report["validated"] = True
                 report["validated_by"] = 0
 

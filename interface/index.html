@@ -24,6 +24,9 @@
         <div class="header">
             <div class="title">
                 <h1>Nouveau rapport</h1>
+                <label for="reportDate">
+                    Date: <input type="date" id="reportDate" style="font-family: inherit;">
+                </label>
                 <p>
                     <script>
                         const formatter = new Intl.DateTimeFormat("en-GB", {
@@ -34,7 +37,8 @@
                             hour: "numeric",
                             minute: "numeric",
                         });
-                        document.write(formatter.format(new Date()))
+                        document.getElementById('reportDate').valueAsDate = new Date();
+                        // document.write(formatter.format(new Date()))
                     </script>
                 </p>
             </div>
@@ -217,6 +221,7 @@
         async function submitReport() {
             const title = document.getElementById("title").value.trim();
             const content_html = quill.root.innerHTML;
+            const reportDate = document.getElementById("reportDate").value;
 
             if (!title && quill.getLength() <= 1) {
                 showStatus("Veuillez entrer un titre ou du contenu.", true);
@@ -227,6 +232,7 @@
             const formData = new FormData();
             formData.append("title", title);
             formData.append("text", content_html);
+            formData.append("date", reportDate);
 
             // Joindre les fichiers
             if (selectedFilesData && selectedFilesData.length > 0) {

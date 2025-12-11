@@ -1,10 +1,6 @@
 {
-    "smtp_server": "smtp.galaxyconseils.com",
-    "tls_port": 587,
-    "admin_email": "contact@galaxyconseils.com",
-    "admin_email_password": "Livre1234@",
     "last_user_id": 0,
-    "last_record_id": 12,
-    "last_file_id": 34,
-    "last_post_id": 0
+    "last_post_id": 0,
+    "last_record_id": 2,
+    "last_file_id": 2
 }

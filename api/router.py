@@ -94,43 +94,34 @@ def get_user_profile(session: dict = Depends(verify_authentication_approval)):
     user_profile = users.get(str(session.get("user_id")))
     return {"ok": True, "user": user_profile}
 
-# @router.patch("/profile/edit")
-# async def edit_profile(username: Optional[str] = Form(""), phone: Optional[str] = Form(""), profile_image: Optional[UploadFile] = File(), session: dict = Depends(verify_authentication_approval)):
-#     if files_to_delete is None:
-#         files_to_delete = []
-#     reports = load_data("reports")
-#     user_id = session.get("user_id")
-
-#     user_reports = reports.get(str(user_id), {})
-#     if not user_reports:
-#         return {"ok": True, "message": "You have no reports"}
-
-#     day_report = user_reports.get("items").get(now("date"), {})
-#     if not day_report:
-#         return {"ok": True, "message": "You have no active reports"}
-#     print("day_report", day_report)
-
-#     records = day_report.get("records")
-#     record_index = next((i for i,u in enumerate(records) if u.get("id") == id), -1)
-#     if record_index == -1:
-#         raise HTTPException(status_code=401, detail="Invalid report index !")
-
-#     new_files_info = await delete_files(records[record_index]["content"]["files"], set(files_to_delete))
-
-#     for f in files:
-#         filename = f.filename
-#         new_files_info.append(await save_file(f, f"files/reports/{id}/{filename}"))
-
-#     day_report["records"][record_index]["title"] = title or records[record_index]["title"]
-#     day_report["records"][record_index]["last_edit_at"] = now("time")
-#     day_report["records"][record_index]["content"]["text"] = text or records[record_index]["content"]["text"]
-#     day_report["records"][record_index]["content"]["files"] = new_files_info
-
-#     user_reports["items"][now("date")].update(day_report)
-#     reports[str(user_id)].update(user_reports)
-
-#     save_data(reports, "reports")
-#     return {"ok": True, "message": "Record edited successfully", "report": day_report["records"][record_index]}
+@router.patch("/profile/edit")
+async def edit_profile(username: Optional[str] = Form(""), fullname: Optional[str] = Form(""), phone: Optional[str] = Form(""), session: dict = Depends(verify_authentication_approval)):
+    """Edit user profile information"""
+    users = load_data("users")
+    user_id = str(session.get("user_id"))
+    user = users.get(user_id)
+    
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Update fields only if provided
+    if username:
+        # Check if username is already taken by another user
+        if any(u.get("username") == username and k != user_id for k, u in users.items()):
+            raise HTTPException(status_code=400, detail="Username already taken")
+        user["username"] = username
+    
+    if fullname:
+        user["fullname"] = fullname
+    
+    if phone:
+        user["phone"] = phone
+    
+    user["last_edit_at"] = now()
+    users[user_id] = user
+    save_data(users, "users")
+    
+    return {"ok": True, "message": "Profile updated successfully", "user": user}
 
 
 # -------------------------------------------
@@ -149,7 +140,7 @@ async def add_post(text: str = Form(""), files: List[UploadFile] = File([])):
     files_info = []
     for f in files:
         filename = f.filename
-        files_info.append(await save_file(f, f"files/posts/{new_post_id}/{filename}"))
+        files_info.append(await save_file(f, f"database/files/posts/{new_post_id}/{filename}"))
 
     new_post = {"id": new_post_id, "content": {"text": text, "files": files_info}, "day": now("date"), "time": now("time")}
     posts.append(new_post)
@@ -160,7 +151,7 @@ async def add_post(text: str = Form(""), files: List[UploadFile] = File([])):
 
 
 @router.post("/reports/add")
-async def add_report(title: str = Form(...), text: Optional[str] = Form(""), files: Optional[List[UploadFile]] = File([]), session: dict = Depends(verify_authentication_approval)):
+async def add_report(title: str = Form(...), text: Optional[str] = Form(""), date: str = Form(""), files: Optional[List[UploadFile]] = File([]), session: dict = Depends(verify_authentication_approval)):
     print("\n>> Adding report...\n>> Received data:", title, text, files, sep=" - ")
     config = load_data("config")
     new_record_id = config.get("last_record_id")+1
@@ -170,7 +161,14 @@ async def add_report(title: str = Form(...), text: Optional[str] = Form(""), fil
     reports = load_data("reports")
 
     user_id = session.get("user_id")
-    current_day = now("date")
+
+    try:
+        current_day = datetime.strptime(date, "%d-%m-%Y").strftime("%d-%m-%Y")
+    except Exception:
+        try:
+            current_day = datetime.strptime(date, "%Y-%m-%d").strftime("%d-%m-%Y")
+        except Exception:
+            current_day = now("date")
     
     user_reports = reports.get(str(user_id), {"items": {}, "user_id": user_id})
     
@@ -179,7 +177,7 @@ async def add_report(title: str = Form(...), text: Optional[str] = Form(""), fil
     files_info = []
     for f in files:
         filename = f.filename
-        files_info.append(await save_file(f, f"files/reports/{new_record_id}/{filename}"))
+        files_info.append(await save_file(f, f"database/files/reports/{new_record_id}/{filename}"))
 
     report_content = {"text": text, "files": files_info}
     new_report = {"id": new_record_id, "title": title, "content": report_content, "user_id": user_id, "day": current_day, "created_at": now("time"), "last_edit_at": ""}
@@ -200,7 +198,7 @@ def get_reports(session: dict = Depends(verify_authentication_approval)):
     return {"ok": True, "reports": reports.get(str(user_id), {})}
 
 @router.patch("/reports/edit")
-async def edit_report(id: int = Form(...), title: Optional[str] = Form(""), text: Optional[str] = Form(""), files_to_delete: Optional[List[int]] = None, files: Optional[List[UploadFile]] = File([]), session: dict = Depends(verify_authentication_approval)):
+async def edit_report(id: int = Form(...), date: str = Form(...), title: Optional[str] = Form(""), text: Optional[str] = Form(""), files_to_delete: Optional[List[int]] = None, files: Optional[List[UploadFile]] = File([]), session: dict = Depends(verify_authentication_approval)):
     print("\n>> Editing report...\n>> Received data:", id, title, text, files, sep=" - ")
     if files_to_delete is None:
         files_to_delete = []
@@ -211,11 +209,15 @@ async def edit_report(id: int = Form(...), title: Optional[str] = Form(""), text
     if not user_reports:
         return {"ok": True, "message": "You have no reports"}
 
-    day_report = user_reports.get("items").get(now("date"), {})
-    if not day_report:
-        return {"ok": True, "message": "You have no active reports"}
+    target_report = user_reports.get("items").get(date, {})
+    if not target_report:
+        return {"ok": False, "message": f"You sent no reports on the {date}"}
+    
+    # Editing possible only in the interval of 3 days
+    if target_report.get("validated"):
+        return {"ok": False, "message": "You can't edit this reports anymore"}
 
-    records = day_report.get("records")
+    records = target_report.get("records")
     record_index = next((i for i,u in enumerate(records) if u.get("id") == id), -1)
     if record_index == -1:
         raise HTTPException(status_code=401, detail="Invalid report index !")
@@ -227,18 +229,18 @@ async def edit_report(id: int = Form(...), title: Optional[str] = Form(""), text
         filename = f.filename
         new_files_info.append(await save_file(f, f"files/reports/{id}/{filename}"))
 
-    day_report["records"][record_index]["title"] = title or records[record_index]["title"]
-    day_report["records"][record_index]["last_edit_at"] = now("time")
-    day_report["records"][record_index]["content"]["text"] = text or records[record_index]["content"]["text"]
-    day_report["records"][record_index]["content"]["files"] = new_files_info
+    target_report["records"][record_index]["title"] = title or records[record_index]["title"]
+    target_report["records"][record_index]["last_edit_at"] = now("time")
+    target_report["records"][record_index]["content"]["text"] = text or records[record_index]["content"]["text"]
+    target_report["records"][record_index]["content"]["files"] = new_files_info
 
-    user_reports["items"][now("date")].update(day_report)
+    user_reports["items"][date].update(target_report)
     reports[str(user_id)].update(user_reports)
 
     print("===============After edit, Reports Content===============", reports)
 
     save_data(reports, "reports")
-    return {"ok": True, "message": "Record edited successfully", "report": day_report["records"][record_index]}
+    return {"ok": True, "message": "Record edited successfully", "report": target_report["records"][record_index]}
 
 @router.delete("/reports/delete/{id:path}")
 async def delete_report(id: int, session: dict = Depends(verify_authentication_approval)):
@@ -250,23 +252,21 @@ async def delete_report(id: int, session: dict = Depends(verify_authentication_a
     if not user_reports:
         return {"ok": True, "message": "You have no reports"}
     
-    day_report = user_reports.get("items").get(now("date"), {})
-    if not day_report:
-        return {"ok": True, "message": "You have no active reports"}
-    print("day_report", day_report)
-    
-    records = day_report.get("records")
+    records = [
+        record 
+        for day_report in user_reports.get("items", {}).values() 
+        for record in day_report.get("records", [])
+    ]
     record_index = next((i for i,u in enumerate(records) if u.get("id") == id), -1)
     if record_index == -1:
         raise HTTPException(status_code=401, detail="Invalid report index !")
 
-    deleted_record = day_report["records"].pop(record_index)
+    deleted_record = user_reports["items"][records[record_index].get("date")]["records"].pop(record_index)
     if deleted_record.get("content").get("files"):
-        res = await delete_dir(f"files/reports/{id}")
+        res = await delete_dir(f"database/files/reports/{id}")
         if not res.get("ok"):
             raise HTTPException(status_code=401, detail = "An error occured while attempting to delete report")
     
-    user_reports["items"][now("date")].update(day_report)
     reports[str(user_id)].update(user_reports)
     
     save_data(reports, "reports")
@@ -274,7 +274,7 @@ async def delete_report(id: int, session: dict = Depends(verify_authentication_a
 
 @router.get("/files/{path:path}")
 async def get_protected_file(path: str, session: dict = Depends(verify_authentication_approval)):
-    full_path = Path("files").joinpath(path)
+    full_path = Path("database/files").joinpath(path)
 
     if ".." in path:
         raise HTTPException(status_code=400, detail="Invalid path")
@@ -284,3 +284,46 @@ async def get_protected_file(path: str, session: dict = Depends(verify_authentic
 
     return FileResponse(full_path)
 
+
+# -------------------------------------------
+# Admin Operations
+# -------------------------------------------
+
+@router.post("/admin/database/reset")
+async def reset_database(authorized: bool = Depends(only_admin)):
+    """Reset all database files to empty state. Admin only."""
+    try:
+        import json
+        from datetime import datetime
+        
+        # Initialize empty data structures
+        config = {
+            "last_user_id": 0,
+            "last_post_id": 0,
+            "last_record_id": 0,
+            "last_file_id": 0,
+        }
+        # users = {}
+        sessions = {}
+        posts = []
+        reports = {}
+        
+        # Save all reset data
+        save_data(config, "config")
+        # save_data(users, "users")
+        save_data(sessions, "sessions")
+        save_data(posts, "posts")
+        save_data(reports, "reports")
+        
+        # Clear file directories
+        await delete_dir("database/files/posts")
+        await delete_dir("database/files/reports")
+
+        
+        return {
+            "ok": True,
+            "message": "Database has been successfully reset to initial state",
+            "timestamp": now()
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error resetting database: {str(e)}")

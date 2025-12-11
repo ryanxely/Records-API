@@ -19,7 +19,7 @@ const CONFIG = {
     
     // User endpoints
     PROFILE: '/profile',
-    PROFILE_UPDATE: '/profile/update',
+    PROFILE_UPDATE: '/profile/edit',
     USERS_GET: '/users'
 
 };

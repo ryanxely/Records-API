@@ -1,244 +1,59 @@
 {
     "1": {
         "items": {
-            "04-12-2025": {
-                "records": [],
-                "day": "04-12-2025",
-                "validated": true,
-                "validated_by": 0
-            },
-            "05-12-2025": {
+            "11-12-2025": {
                 "records": [
                     {
-                        "id": 3,
-                        "title": "dfff",
+                        "id": 1,
+                        "title": "k",
                         "content": {
-                            "text": "<p><br></p>",
+                            "text": "<p>llnj</p>",
                             "files": [
                                 {
-                                    "id": 4,
-                                    "name": "Ryan's Folder_8.jpg",
-                                    "type": "image/jpeg",
-                                    "path": "files\\reports\\3\\4.jpg"
-                                },
-                                {
-                                    "id": 5,
-                                    "name": "computer.png",
+                                    "id": 1,
+                                    "name": "Screenshot (207).png",
                                     "type": "image/png",
-                                    "path": "files\\reports\\3\\5.png"
-                                },
-                                {
-                                    "id": 6,
-                                    "name": "Capture d’écran (5).png",
-                                    "type": "image/png",
-                                    "path": "files\\reports\\3\\6.png"
+                                    "path": "database/files/reports/1/1.png"
                                 }
                             ]
                         },
                         "user_id": 1,
-                        "day": "05-12-2025",
-                        "created_at": "02:39:41",
-                        "last_edit_at": "03:54:29"
-                    },
-                    {
-                        "id": 5,
-                        "title": "Systeme Terminé X 4",
-                        "content": {
-                            "text": "<p>ldmfzero lmkr  ma</p>",
-                            "files": [
-                                {
-                                    "id": 7,
-                                    "name": "Tableau de Bord pour l.docx",
-                                    "type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                                    "path": "files\\reports\\5\\7.docx"
-                                },
-                                {
-                                    "id": 8,
-                                    "name": "Ryan's Folder_8.jpg",
-                                    "type": "image/jpeg",
-                                    "path": "files\\reports\\5\\8.jpg"
-                                },
-                                {
-                                    "id": 9,
-                                    "name": "Scan_20250918 (5).png",
-                                    "type": "image/png",
-                                    "path": "files\\reports\\5\\9.png"
-                                }
-                            ]
-                        },
-                        "user_id": 1,
-                        "day": "05-12-2025",
-                        "created_at": "06:52:22",
-                        "last_edit_at": "06:53:04"
+                        "day": "11-12-2025",
+                        "created_at": "22:52:20",
+                        "last_edit_at": "22:55:44"
                     }
                 ],
-                "day": "05-12-2025",
-                "validated": true,
-                "validated_by": 0
+                "day": "11-12-2025",
+                "validated": false,
+                "validated_by": -1
             },
-            "08-12-2025": {
-                "records": [
-                    {
-                        "id": 7,
-                        "title": "cvbnm",
-                        "content": {
-                            "text": "<p>jjjjj</p>",
-                            "files": [
-                                {
-                                    "id": 23,
-                                    "name": "WhatsApp Image 2025-08-04 at 11.52.58_f6d30f10.jpg",
-                                    "type": "image/jpeg",
-                                    "path": "files\\reports\\7\\23.jpg"
-                                },
-                                {
-                                    "id": 25,
-                                    "name": "computer.png",
-                                    "type": "image/png",
-                                    "path": "files\\reports\\7\\25.png"
-                                },
-                                {
-                                    "id": 33,
-                                    "name": "Ryan's Folder_8.jpg",
-                                    "type": "image/jpeg",
-                                    "path": "files\\reports\\7\\33.jpg"
-                                },
-                                {
-                                    "id": 34,
-                                    "name": "Ryan's Folder_8.jpg",
-                                    "type": "image/jpeg",
-                                    "path": "files\\reports\\7\\34.jpg"
-                                }
-                            ]
-                        },
-                        "user_id": 1,
-                        "day": "08-12-2025",
-                        "created_at": "14:02:28",
-                        "last_edit_at": "14:58:08"
-                    },
-                    {
-                        "id": 8,
-                        "title": "cc",
-                        "content": {
-                            "text": "<p>bnbnbnbnbnb</p>",
-                            "files": [
-                                {
-                                    "id": 14,
-                                    "name": "Tableau de Bord pour l.docx",
-                                    "type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                                    "path": "files\\reports\\8\\14.docx"
-                                }
-                            ]
-                        },
-                        "user_id": 1,
-                        "day": "08-12-2025",
-                        "created_at": "14:04:58",
-                        "last_edit_at": "14:15:55"
-                    },
-                    {
-                        "id": 9,
-                        "title": "c",
-                        "content": {
-                            "text": "<p>bon</p>",
-                            "files": [
-                                {
-                                    "id": 19,
-                                    "name": "liste d'amis combinee.png.jpg",
-                                    "type": "image/jpeg",
-                                    "path": "files\\reports\\9\\19.jpg"
-                                },
-                                {
-                                    "id": 21,
-                                    "name": "Tableau de Bord pour l.docx",
-                                    "type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                                    "path": "files\\reports\\9\\21.docx"
-                                }
-                            ]
-                        },
-                        "user_id": 1,
-                        "day": "08-12-2025",
-                        "created_at": "14:08:07",
-                        "last_edit_at": "14:20:09"
-                    },
-                    {
-                        "id": 10,
-                        "title": "x",
-                        "content": {
-                            "text": "<p>xx</p>",
-                            "files": []
-                        },
-                        "user_id": 1,
-                        "day": "08-12-2025",
-                        "created_at": "14:09:45",
-                        "last_edit_at": ""
-                    },
-                    {
-                        "id": 11,
-                        "title": "zx",
-                        "content": {
-                            "text": "<p>zzxx</p>",
-                            "files": [
-                                {
-                                    "id": 16,
-                                    "name": "Scan_20250918.pdf",
-                                    "type": "application/pdf",
-                                    "path": "files\\reports\\11\\16.pdf"
-                                }
-                            ]
-                        },
-                        "user_id": 1,
-                        "day": "08-12-2025",
-                        "created_at": "14:10:02",
-                        "last_edit_at": "14:10:27"
-                    }
-                ],
-                "day": "08-12-2025",
-                "validated": true,
-                "validated_by": 0
-            }
-        },
-        "user_id": 1
-    },
-    "0": {
-        "items": {
-            "05-12-2025": {
+            "09-12-2025": {
                 "records": [
                     {
                         "id": 2,
-                        "title": "jjjj",
+                        "title": "bc",
                         "content": {
-                            "text": "",
-                            "files": []
+                            "text": "<p>vcde</p>",
+                            "files": [
+                                {
+                                    "id": 2,
+                                    "name": "Screenshot (240).png",
+                                    "type": "image/png",
+                                    "path": "database/files/reports/2/2.png"
+                                }
+                            ]
                         },
-                        "user_id": 0,
-                        "day": "05-12-2025",
-                        "created_at": "01:05:57",
+                        "user_id": 1,
+                        "day": "09-12-2025",
+                        "created_at": "22:52:40",
                         "last_edit_at": ""
                     }
                 ],
-                "day": "05-12-2025",
-                "validated": true,
-                "validated_by": 0
-            },
-            "08-12-2025": {
-                "records": [
-                    {
-                        "id": 12,
-                        "title": "vvvvvvvvvvvvvvvv",
-                        "content": {
-                            "text": "<p><br></p>",
-                            "files": []
-                        },
-                        "user_id": 0,
-                        "day": "08-12-2025",
-                        "created_at": "14:53:39",
-                        "last_edit_at": ""
-                    }
-                ],
-                "day": "08-12-2025",
-                "validated": true,
-                "validated_by": 0
+                "day": "09-12-2025",
+                "validated": false,
+                "validated_by": -1
             }
         },
-        "user_id": 0
+        "user_id": 1
     }
 }
