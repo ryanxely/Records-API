@@ -192,8 +192,8 @@
                     }
                 ],
                 "day": "08-12-2025",
-                "validated": false,
-                "validated_by": -1
+                "validated": true,
+                "validated_by": 0
             }
         },
         "user_id": 1
@@ -235,8 +235,8 @@
                     }
                 ],
                 "day": "08-12-2025",
-                "validated": false,
-                "validated_by": -1
+                "validated": true,
+                "validated_by": 0
             }
         },
         "user_id": 0
